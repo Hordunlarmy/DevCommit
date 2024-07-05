@@ -1,12 +1,20 @@
 import subprocess
 
 from InquirerPy import prompt
+from InquirerPy import inquirer
+from InquirerPy.base.control import Choice
+from InquirerPy.separator import Separator
 from rich.console import Console
 from src.utils.parser import CommitFlag, parse_arguments
 
 from src.app.gemini_ai import generateCommitMessage
 from src.utils.git import (KnownError, assert_git_repo,
                            get_detected_message, get_staged_diff)
+from src import Logger
+
+
+logger_instance = Logger("__devcommit__")
+logger = logger_instance.get_logger()
 
 
 # Function to check if any commits exist
@@ -51,18 +59,11 @@ def main(flags: CommitFlag):
         with console.status(
                 "[bold green]The AI is analyzing your changes...[/bold green]",
                 spinner="dots"):
-            if has_commits():
-                diff = subprocess.run(
-                    ["git", "diff", "HEAD"],
-                    stdout=subprocess.PIPE,
-                    text=True,
-                ).stdout
-            else:
-                diff = subprocess.run(
-                    ["git", "diff", "--staged"],
-                    stdout=subprocess.PIPE,
-                    text=True,
-                ).stdout
+            diff = subprocess.run(
+                ["git", "diff", "--staged"],
+                stdout=subprocess.PIPE,
+                text=True,
+            ).stdout
 
             if not diff:
                 raise KnownError(
@@ -71,48 +72,55 @@ def main(flags: CommitFlag):
 
             commit_message = generateCommitMessage(diff)
             if isinstance(commit_message, str):
-                commit_message = commit_message.splitlines()
+                commit_message = commit_message.split('|')
 
             if not commit_message:
                 raise KnownError(
                     "No commit messages were generated. Try again.")
 
         # Prompt user to select a commit message
+        logger.info(f"Commit messages: {commit_message}")
         if len(commit_message) == 1:
-            message = commit_message[0]
-            confirm = prompt(
-                [
-                    {
-                        "type": "confirm",
-                        "message": f"Use this commit message?\n"
-                        f"{message}\n",
-                        "default": True,
-                    }
-                ]
-            )
-            if not confirm:
+            # message = commit_message[0]
+            # confirm = prompt(
+            #     [
+            #         {
+            #             "type": "confirm",
+            #             "message": f"Use this commit message?\n"
+            #             f"{message}\n",
+            #             "default": True,
+            #         }
+            #     ]
+            # )
+            action = inquirer.select(
+                message="Select a commit message or cancel:",
+                choices=[*commit_message, Choice("Cancel", value='cancel')],
+                default=None,
+            ).execute()
+
+            # Check user selection
+            if action == 'cancel':
                 console.print("[bold red]Commit cancelled[/bold red]")
                 return
+            else:
+                commit = action
+
         else:
-            selected = prompt(
-                [
-                    {
-                        "type": "list",
-                        "message": "Pick a commit message to use: "
-                        "(Ctrl+c to exit)",
-                        "choices": commit_message + ["Cancel"],
-                    }
-                ]
-            )
-
-            if selected == "Cancel":
+            action = inquirer.select(
+                message="Select an action:",
+                choices=[*commit_message,
+                         Choice("Cancel", 'cancel'),
+                         ],
+                default=None,
+            ).execute()
+            if action == 'cancel':
                 console.print("[bold red]Commit cancelled[/bold red]")
                 return
-
-            message = selected
+            else:
+                commit = action
 
         # Commit changes
-        subprocess.run(["git", "commit", "-m", message, *flags["rawArgv"]])
+        subprocess.run(["git", "commit", "-m", commit, *flags["rawArgv"]])
         console.print("[bold green]✔ Successfully committed![/bold green]")
 
     except KnownError as error:
