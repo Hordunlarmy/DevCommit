@@ -1,10 +1,7 @@
 import subprocess
 from time import sleep
-from InquirerPy import prompt
 from InquirerPy import inquirer
-from InquirerPy.base.control import Choice
 from InquirerPy import get_style
-from InquirerPy.separator import Separator
 from rich.console import Console
 from src.utils.parser import CommitFlag, parse_arguments
 
@@ -32,17 +29,12 @@ def main(flags: CommitFlag):
         assert_git_repo()
 
         console = Console()
-        tasks = [f"task {n}" for n in range(1, 4)]
 
         # Stage all changes if flag is set
         if flags["stageAll"]:
             with console.status(
                 "[bold green]Staging all changes...[/bold green]",
                     spinner="dots"):
-                while tasks:
-                    task = tasks.pop(0)
-                    sleep(1)
-                    console.print(f"[bold green]✔ {task}[/bold green]")
                     subprocess.run(["git", "add", "--update"], check=True)
 
         # Detect staged files

@@ -4,7 +4,7 @@ import os
 from decouple import Config, RepositoryEnv
 
 # Load configuration from the custom file
-home_dir = os.path.expanduser("~/.girc")
+home_dir = os.path.expanduser("~/.Dcommit")
 
 config = Config(RepositoryEnv(home_dir))
 
@@ -15,7 +15,7 @@ class Logger:
     def __init__(
         self,
         logger_name: str,
-        log_file: str = "gcai.log",
+        log_file: str = "devcommit.logs",
         log_level: int = logging.DEBUG,
     ):
         self.logger = logging.getLogger(logger_name)

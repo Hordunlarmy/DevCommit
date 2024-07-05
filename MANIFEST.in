@@ -1,0 +1,4 @@
+include README.md COPYING
+recursive-include src *.py
+recursive-include scripts *.py
+
