@@ -1,5 +1,2 @@
-<picture> <source media="(prefers-color-scheme: dark)" srcset="https://drive.google.com/uc?export=view&id=1zo5dt0XrFbldI--xcwKoiO_yrT_BV3g4
-"> <source media="(prefers-color-scheme: light)" srcset="https://drive.google.com/uc?export=view&id=1zo5dt0XrFbldI--xcwKoiO_yrT_BV3g4
-"> <img alt="README image" src="https://drive.google.com/uc?export=view&id=1zo5dt0XrFbldI--xcwKoiO_yrT_BV3g4
-"> </picture>
+<picture> <source media="(prefers-color-scheme: dark)" srcset="https://i.imgur.com/erPaZjc.png"> <source media="(prefers-color-scheme: light)" srcset="https://i.imgur.com/erPaZjc.png"> <img alt="README image" src="https://i.imgur.com/erPaZjc.png"> </picture>
 

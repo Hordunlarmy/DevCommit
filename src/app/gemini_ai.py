@@ -24,7 +24,7 @@ def generateCommitMessage(diff: str) -> str:
         max_no = config('MAX_NO', default=1)
         locale = config('LOCALE', default="en-US")
         commit_type = config('COMMIT_TYPE', default="general")
-        model_name = config('MODEL_NAME')
+        model_name = config('MODEL_NAME', default="gemini-1.5-flash")
         if not model_name:
             raise ValueError("MODEL_NAME not set.")
 

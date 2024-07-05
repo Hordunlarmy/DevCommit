@@ -6,14 +6,14 @@ import subprocess
 class CustomInstallCommand(install):
     def run(self):
         install.run(self)
-        subprocess.call(['python', '-m', 'scripts.create_dcommit'])
+        subprocess.call(['python3', '-m', 'scripts.create_dcommit'])
 
 
 setup(
     name='DevCommit',
     version='0.1.0',
     author='HordunTech',
-    author_email='horduntech@gmai;.com',
+    author_email='horduntech@gmail.com',
     description='A command-line AI tool for autocommits',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',

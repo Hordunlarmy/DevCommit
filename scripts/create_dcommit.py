@@ -5,7 +5,7 @@ def create_dcommit():
     dcommit_content = """
     # DevCommit configurations
     LOCALE = en
-    MAX_NO = 5
+    MAX_NO = 1
     COMMIT_TYPE = conventional
     MODEL_NAME = gemini-1.5-flash
     """
@@ -14,10 +14,10 @@ def create_dcommit():
         target_directory = os.path.join(os.environ.get('VIRTUAL_ENV', ''),
                                         'config')
     else:
-        target_directory = os.path.expanduser('~/.your_project_config')
+        target_directory = os.path.expanduser('~/')
 
     os.makedirs(target_directory, exist_ok=True)
-    dcommit_file = os.path.join(target_directory, '.Dcommit')
+    dcommit_file = os.path.join(target_directory, '.dcommit')
 
     with open(dcommit_file, 'w') as file:
         file.write(dcommit_content.strip())
