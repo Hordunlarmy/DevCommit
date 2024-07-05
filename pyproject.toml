@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "gemini"
+version = "0.1.0"
+description = ""
+authors = ["Hordunlarmy <Hordunlarmy@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+inquirerpy = "^0.3.4"
+google-generativeai = "^0.7.1"
+rich = "^13.7.1"
+python-decouple = "^3.8"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
