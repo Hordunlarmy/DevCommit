@@ -21,6 +21,7 @@ def generateCommitMessage(diff: str) -> str:
         genai.configure(api_key=api_key)
 
         # Load Configuration Values
+        max_no = config('MAX_NO', default=1)
         locale = config('LOCALE', default="en-US")
         commit_type = config('COMMIT_TYPE', default="general")
         model_name = config('MODEL_NAME')
@@ -41,7 +42,8 @@ def generateCommitMessage(diff: str) -> str:
             model_name=model_name,
         )
 
-        prompt_text = generate_prompt(8192, locale, commit_type)
+        prompt_text = generate_prompt(8192, max_no, locale, commit_type)
+        # logger.info(f"Prompt: {prompt_text}")
         chat_session = model.start_chat(
             history=[
                 {
@@ -52,6 +54,7 @@ def generateCommitMessage(diff: str) -> str:
         )
 
         # Send the Diff as Message
+        # logger.info(f"Diff: {diff}")
         response = chat_session.send_message(diff)
         if response and hasattr(response, 'text'):
             return response.text.strip()

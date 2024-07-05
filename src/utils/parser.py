@@ -14,7 +14,8 @@ class CommitFlag(TypedDict):
 # Function to parse command-line arguments
 def parse_arguments() -> CommitFlag:
     parser = ArgumentParser(
-        description="Commit your changes with AI-generated messages."
+        description="Commit your changes with AI-generated messages.",
+        allow_abbrev=False
     )
     parser.add_argument(
         "--generate",

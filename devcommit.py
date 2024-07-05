@@ -1,8 +1,9 @@
 import subprocess
-
+from time import sleep
 from InquirerPy import prompt
 from InquirerPy import inquirer
 from InquirerPy.base.control import Choice
+from InquirerPy import get_style
 from InquirerPy.separator import Separator
 from rich.console import Console
 from src.utils.parser import CommitFlag, parse_arguments
@@ -31,6 +32,18 @@ def main(flags: CommitFlag):
         assert_git_repo()
 
         console = Console()
+        tasks = [f"task {n}" for n in range(1, 4)]
+
+        # Stage all changes if flag is set
+        if flags["stageAll"]:
+            with console.status(
+                "[bold green]Staging all changes...[/bold green]",
+                    spinner="dots"):
+                while tasks:
+                    task = tasks.pop(0)
+                    sleep(1)
+                    console.print(f"[bold green]✔ {task}[/bold green]")
+                    subprocess.run(["git", "add", "--update"], check=True)
 
         # Detect staged files
         with console.status(
@@ -50,10 +63,6 @@ def main(flags: CommitFlag):
         )
         for file in staged["files"]:
             console.print(f" - {file}")
-
-        # Stage all changes if flag is set
-        if flags["stageAll"]:
-            subprocess.run(["git", "add", "--update"], check=True)
 
         # Analyze changes
         with console.status(
@@ -79,45 +88,26 @@ def main(flags: CommitFlag):
                     "No commit messages were generated. Try again.")
 
         # Prompt user to select a commit message
-        logger.info(f"Commit messages: {commit_message}")
+        # logger.info(f"Commit messages: {commit_message}")
         if len(commit_message) == 1:
-            # message = commit_message[0]
-            # confirm = prompt(
-            #     [
-            #         {
-            #             "type": "confirm",
-            #             "message": f"Use this commit message?\n"
-            #             f"{message}\n",
-            #             "default": True,
-            #         }
-            #     ]
-            # )
-            action = inquirer.select(
-                message="Select a commit message or cancel:",
-                choices=[*commit_message, Choice("Cancel", value='cancel')],
-                default=None,
-            ).execute()
+            tag = "Use This Commit Message? "
+        tag = "Select A Commit Message:"
+        style = get_style({"instruction": "#abb2bf"}, style_override=False)
+        action = inquirer.fuzzy(
+            message=tag,
+            style=style,
+            choices=[
+                *commit_message, 'cancel',
+            ],
+            default=None,
+        ).execute()
 
-            # Check user selection
-            if action == 'cancel':
-                console.print("[bold red]Commit cancelled[/bold red]")
-                return
-            else:
-                commit = action
-
+        # Check user selection
+        if action == 'cancel':
+            console.print("[bold red]Commit cancelled[/bold red]")
+            return
         else:
-            action = inquirer.select(
-                message="Select an action:",
-                choices=[*commit_message,
-                         Choice("Cancel", 'cancel'),
-                         ],
-                default=None,
-            ).execute()
-            if action == 'cancel':
-                console.print("[bold red]Commit cancelled[/bold red]")
-                return
-            else:
-                commit = action
+            commit = action
 
         # Commit changes
         subprocess.run(["git", "commit", "-m", commit, *flags["rawArgv"]])

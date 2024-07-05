@@ -53,6 +53,7 @@ def specify_commit_format(commit_type: CommitType) -> str:
 
 
 def generate_prompt(max_length: int,
+                    max_no: int,
                     locale: str,
                     commit_type: CommitType) -> str:
     """Prompt Passed to Gemini for Generating a Git Commit Message"""
@@ -61,9 +62,15 @@ def generate_prompt(max_length: int,
         "Generate a concise git commit message written in present tense for \
         the following code diff with the given specifications below:",
         f"Message language: {locale}",
+        f"Commit count: {max_no}",
+        f"Max_line_per_commit: 1"
+        f"Separator: '|'"
         f"Commit message must be a maximum of {max_length} characters.",
-        "Exclude anything unnecessary such as translation. \
-        Your entire response will be passed directly into git commit.",
+        "You are to generate commit message or messages based on the count \
+        passed, Reply with only the commit message or messages, Exclude \
+        anything unnecessary such as translation or description. Only return \
+        the commit message or messages. Separation should only be done with \
+        Separator not newline",
         commit_types[commit_type],
         specify_commit_format(commit_type)
     ]

@@ -2,3 +2,505 @@
 ERROR:     (__main__) ==  Error: MODEL_NAME not found. Declare it as envvar or define a default value.  [44]
 
 ERROR:     (__gemini_ai__) ==  Error: MODEL_NAME not found. Declare it as envvar or define a default value.  [44]
+
+INFO:     (__gemini_ai__) ==  Prompt: Generate a concise git commit message written in present tense for         the following code diff with the given specifications below:
+Message language: en
+Commit count: 3
+Commit message must be a maximum of 8192 characters.
+You are to generate commit message or messages based on the count         passed, Reply with only the commit message or messages separated by a         new line, Exclude anything unnecessary such as translation.
+
+                    Choose a type from the type-to-description JSON below                     that best describes the git diff:
+                    {
+                    "docs": "Documentation only changes",
+                    "style": "Changes that do not affect the meaning of the                             code (white-space, formatting, missing                             semi-colons, etc)",
+                    "refactor": "A code change that neither fixes a bug nor                                 adds a feature",
+                    "perf": "A code change that improves performance",
+                    "test": "Adding missing tests or correcting existing                             tests",
+                    "build": "Changes that affect the build system or                             external dependencies",
+                    "ci": "Changes to our CI configuration files and scripts",
+                    "chore": "Other changes that don't modify src or test                             files",
+                    "revert": "Reverts a previous commit",
+                    "feat": "A new feature",
+                    "fix": "A bug fix"
+                    }
+                    
+The output response must be in format:
+<type>(<optional scope>): <commit message>  [46]
+
+INFO:     (__gemini_ai__) ==  Prompt: Generate a concise git commit message written in present tense for         the following code diff with the given specifications below:
+Message language: en
+Commit count: 3
+Commit message must be a maximum of 8192 characters.
+You are to generate commit message or messages based on the count         passed, Reply with only the commit message or messages separated by a         new line, Exclude anything unnecessary such as translation.
+
+                    Choose a type from the type-to-description JSON below                     that best describes the git diff:
+                    {
+                    "docs": "Documentation only changes",
+                    "style": "Changes that do not affect the meaning of the                             code (white-space, formatting, missing                             semi-colons, etc)",
+                    "refactor": "A code change that neither fixes a bug nor                                 adds a feature",
+                    "perf": "A code change that improves performance",
+                    "test": "Adding missing tests or correcting existing                             tests",
+                    "build": "Changes that affect the build system or                             external dependencies",
+                    "ci": "Changes to our CI configuration files and scripts",
+                    "chore": "Other changes that don't modify src or test                             files",
+                    "revert": "Reverts a previous commit",
+                    "feat": "A new feature",
+                    "fix": "A bug fix"
+                    }
+                    
+The output response must be in format:
+<type>(<optional scope>): <commit message>  [46]
+
+INFO:     (__gemini_ai__) ==  Diff: diff --git a/devcommit.py b/devcommit.py
+new file mode 100644
+index 0000000..7156182
+--- /dev/null
++++ b/devcommit.py
+@@ -0,0 +1,128 @@
++import subprocess
++
++from InquirerPy import prompt
++from rich.console import Console
++from src.utils.parser import CommitFlag, parse_arguments
++
++from src.app.gemini_ai import generateCommitMessage
++from src.utils.git import (KnownError, assert_git_repo,
++                           get_detected_message, get_staged_diff)
++
++
++# Function to check if any commits exist
++def has_commits() -> bool:
++    result = subprocess.run(["git", "rev-parse", "HEAD"],
++                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
++    return result.returncode == 0
++
++
++# Main function
++def main(flags: CommitFlag):
++    try:
++        # Ensure current directory is a git repository
++        assert_git_repo()
++
++        console = Console()
++
++        # Detect staged files
++        with console.status(
++            "[bold green]Detecting staged files...[/bold green]",
++                spinner="dots") as status:
++            staged = get_staged_diff(flags["excludeFiles"])
++
++        if not staged:
++            raise KnownError(
++                "No staged changes found. Stage your changes manually, or "
++                "automatically stage all changes with the `--stageAll` flag."
++            )
++
++        console.print(
++            f"[bold green]{get_detected_message(staged['files'])}:"
++            f"[/bold green]"
++        )
++        for file in staged["files"]:
++            console.print(f" - {file}")
++
++        # Stage all changes if flag is set
++        if flags["stageAll"]:
++            subprocess.run(["git", "add", "--update"], check=True)
++
++        # Analyze changes
++        with console.status(
++                "[bold green]The AI is analyzing your changes...[/bold green]",
++                spinner="dots"):
++            if has_commits():
++                diff = subprocess.run(
++                    ["git", "diff", "HEAD"],
++                    stdout=subprocess.PIPE,
++                    text=True,
++                ).stdout
++            else:
++                diff = subprocess.run(
++                    ["git", "diff", "--staged"],
++                    stdout=subprocess.PIPE,
++                    text=True,
++                ).stdout
++
++            if not diff:
++                raise KnownError(
++                    "No diff could be generated. "
++                    "Ensure you have changes staged.")
++
++            commit_message = generateCommitMessage(diff)
++            if isinstance(commit_message, str):
++                commit_message = commit_message.splitlines()
++
++            if not commit_message:
++                raise KnownError(
++                    "No commit messages were generated. Try again.")
++
++        # Prompt user to select a commit message
++        if len(commit_message) == 1:
++            message = commit_message[0]
++            confirm = prompt(
++                [
++                    {
++                        "type": "confirm",
++                        "message": f"Use this commit message?\n"
++                        f"{message}\n",
++                        "default": True,
++                    }
++                ]
++            )
++            if not confirm:
++                console.print("[bold red]Commit cancelled[/bold red]")
++                return
++        else:
++            selected = prompt(
++                [
++                    {
++                        "type": "list",
++                        "message": "Pick a commit message to use: "
++                        "(Ctrl+c to exit)",
++                        "choices": commit_message + ["Cancel"],
++                    }
++                ]
++            )
++
++            if selected == "Cancel":
++                console.print("[bold red]Commit cancelled[/bold red]")
++                return
++
++            message = selected
++
++        # Commit changes
++        subprocess.run(["git", "commit", "-m", message, *flags["rawArgv"]])
++        console.print("[bold green]✔ Successfully committed![/bold green]")
++
++    except KnownError as error:
++        console.print(f"[bold red]✖ {error}[/bold red]")
++    except subprocess.CalledProcessError as error:
++        console.print(f"[bold red]✖ Git command failed: {error}[/bold red]")
++    except Exception as error:
++        console.print(f"[bold red]✖ {error}[/bold red]")
++
++
++if __name__ == "__main__":
++    commit_flags = parse_arguments()
++    main(commit_flags)
+diff --git a/gcai.log b/gcai.log
+index e69de29..ea1327d 100644
+--- a/gcai.log
++++ b/gcai.log
+@@ -0,0 +1,28 @@
++
++ERROR:     (__main__) ==  Error: MODEL_NAME not found. Declare it as envvar or define a default value.  [44]
++
++ERROR:     (__gemini_ai__) ==  Error: MODEL_NAME not found. Declare it as envvar or define a default value.  [44]
++
++INFO:     (__gemini_ai__) ==  Prompt: Generate a concise git commit message written in present tense for         the following code diff with the given specifications below:
++Message language: en
++Commit count: 3
++Commit message must be a maximum of 8192 characters.
++You are to generate commit message or messages based on the count         passed, Reply with only the commit message or messages separated by a         new line, Exclude anything unnecessary such as translation.
++
++                    Choose a type from the type-to-description JSON below                     that best describes the git diff:
++                    {
++                    "docs": "Documentation only changes",
++                    "style": "Changes that do not affect the meaning of the                             code (white-space, formatting, missing                             semi-colons, etc)",
++                    "refactor": "A code change that neither fixes a bug nor                                 adds a feature",
++                    "perf": "A code change that improves performance",
++                    "test": "Adding missing tests or correcting existing                             tests",
++                    "build": "Changes that affect the build system or                             external dependencies",
++                    "ci": "Changes to our CI configuration files and scripts",
++                    "chore": "Other changes that don't modify src or test                             files",
++                    "revert": "Reverts a previous commit",
++                    "feat": "A new feature",
++                    "fix": "A bug fix"
++                    }
++                    
++The output response must be in format:
++<type>(<optional scope>): <commit message>  [46]
+diff --git a/src/app/__pycache__/gemini_ai.cpython-310.pyc b/src/app/__pycache__/gemini_ai.cpython-310.pyc
+index a4302e4..aa782f8 100644
+Binary files a/src/app/__pycache__/gemini_ai.cpython-310.pyc and b/src/app/__pycache__/gemini_ai.cpython-310.pyc differ
+diff --git a/src/app/__pycache__/prompt.cpython-310.pyc b/src/app/__pycache__/prompt.cpython-310.pyc
+index 853eff3..698cc10 100644
+Binary files a/src/app/__pycache__/prompt.cpython-310.pyc and b/src/app/__pycache__/prompt.cpython-310.pyc differ
+diff --git a/src/app/gemini_ai.py b/src/app/gemini_ai.py
+index 9df7b00..0c83976 100644
+--- a/src/app/gemini_ai.py
++++ b/src/app/gemini_ai.py
+@@ -7,42 +7,61 @@ import google.generativeai as genai
+ from .. import Logger, config
+ from .prompt import generate_prompt
+ 
+-logger_instance = Logger("__main__")
++logger_instance = Logger("__gemini_ai__")
+ logger = logger_instance.get_logger()
+ 
+ 
+ def generateCommitMessage(diff: str) -> str:
+     """Return a generated commit message using Gemini AI"""
++    try:
++        # Configure API Key
++        api_key = config('GEMINI_API_KEY')
++        if not api_key:
++            raise ValueError("GEMINI_API_KEY not set.")
++        genai.configure(api_key=api_key)
+ 
+-    genai.configure(api_key=config('GEMINI_API_KEY'))
+-    LOCALE = config('LOCALE')
+-    COMMIT_TYPE = config('COMMIT_TYPE')
++        # Load Configuration Values
++        max_no = config('MAX_NO', default=1)
++        locale = config('LOCALE', default="en-US")
++        commit_type = config('COMMIT_TYPE', default="general")
++        model_name = config('MODEL_NAME')
++        if not model_name:
++            raise ValueError("MODEL_NAME not set.")
+ 
+-    generation_config = {
+-        "response_mime_type": "text/plain",
+-        "max_output_tokens": 8192,
+-        "top_k": 64,
+-        "top_p": 0.95,
+-        "temperature": 5,
+-    }
++        generation_config = {
++            "response_mime_type": "text/plain",
++            "max_output_tokens": 8192,
++            "top_k": 64,
++            "top_p": 0.95,
++            "temperature": 0.7,
++        }
+ 
+-    try:
++        # Create Model and Start Chat
+         model = genai.GenerativeModel(
+             generation_config=generation_config,
+-            model_name=config('MODEL_NAME'),
++            model_name=model_name,
+         )
+ 
++        prompt_text = generate_prompt(8192, max_no, locale, commit_type)
++        logger.info(f"Prompt: {prompt_text}")
+         chat_session = model.start_chat(
+             history=[
+                 {
+                     "role": "user",
+-                    "parts": [generate_prompt(8192, LOCALE, COMMIT_TYPE)],
++                    "parts": [prompt_text],
+                 },
+             ]
+         )
+-    except Exception as e:
+-        logger.error(f"Error: {e}")
+ 
+-    response = chat_session.send_message(diff)
++        # Send the Diff as Message
++        logger.info(f"Diff: {diff}")
++        response = chat_session.send_message(diff)
++        if response and hasattr(response, 'text'):
++            return response.text.strip()
++        else:
++            logger.error("No valid response received from Gemini AI.")
++            return "No valid commit message generated."
+ 
+-    return (response.text)
++    except Exception as e:
++        logger.error(f"Error generating commit message: {e}")
++        return f"Error generating commit message: {str(e)}"
+diff --git a/src/app/prompt.py b/src/app/prompt.py
+index ea68e61..35b4de6 100644
+--- a/src/app/prompt.py
++++ b/src/app/prompt.py
+@@ -53,6 +53,7 @@ def specify_commit_format(commit_type: CommitType) -> str:
+ 
+ 
+ def generate_prompt(max_length: int,
++                    max_no: int,
+                     locale: str,
+                     commit_type: CommitType) -> str:
+     """Prompt Passed to Gemini for Generating a Git Commit Message"""
+@@ -61,9 +62,11 @@ def generate_prompt(max_length: int,
+         "Generate a concise git commit message written in present tense for \
+         the following code diff with the given specifications below:",
+         f"Message language: {locale}",
++        f"Commit count: {max_no}",
+         f"Commit message must be a maximum of {max_length} characters.",
+-        "Exclude anything unnecessary such as translation. \
+-        Your entire response will be passed directly into git commit.",
++        "You are to generate commit message or messages based on the count \
++        passed, Reply with only the commit message or messages separated by a \
++        new line, Exclude anything unnecessary such as translation.",
+         commit_types[commit_type],
+         specify_commit_format(commit_type)
+     ]
+diff --git a/src/utils/__pycache__/git.cpython-310.pyc b/src/utils/__pycache__/git.cpython-310.pyc
+index 52f085b..acd9300 100644
+Binary files a/src/utils/__pycache__/git.cpython-310.pyc and b/src/utils/__pycache__/git.cpython-310.pyc differ
+diff --git a/src/utils/__pycache__/parser.cpython-310.pyc b/src/utils/__pycache__/parser.cpython-310.pyc
+new file mode 100644
+index 0000000..648db93
+Binary files /dev/null and b/src/utils/__pycache__/parser.cpython-310.pyc differ
+diff --git a/src/utils/parser.py b/src/utils/parser.py
+index 8b13789..6d66879 100644
+--- a/src/utils/parser.py
++++ b/src/utils/parser.py
+@@ -1 +1,51 @@
+ 
++from argparse import ArgumentParser, Namespace
++from typing import List, Optional, TypedDict
++
++
++class CommitFlag(TypedDict):
++    generate: Optional[int]
++    excludeFiles: List[str]
++    stageAll: bool
++    commitType: Optional[str]
++    rawArgv: List[str]
++
++
++# Function to parse command-line arguments
++def parse_arguments() -> CommitFlag:
++    parser = ArgumentParser(
++        description="Commit your changes with AI-generated messages."
++    )
++    parser.add_argument(
++        "--generate",
++        "-g",
++        type=int,
++        default=None,
++        help="Number of commit messages to generate",
++    )
++    parser.add_argument(
++        "--excludeFiles",
++        "-e",
++        nargs="*",
++        default=[],
++        help="Files to exclude from the diff",
++    )
++    parser.add_argument(
++        "--stageAll", "-s", action="store_true", help="Stage all changes"
++    )
++    parser.add_argument(
++        "--commitType", "-t", type=str, default=None, help="Type of commit"
++    )
++    parser.add_argument(
++        "rawArgv", nargs="*", help="Additional arguments for git commit"
++    )
++
++    args: Namespace = parser.parse_args()
++
++    return CommitFlag(
++        generate=args.generate,
++        excludeFiles=args.excludeFiles,
++        stageAll=args.stageAll,
++        commitType=args.commitType,
++        rawArgv=args.rawArgv,
++    )
+  [57]
+
+INFO:     (__gemini_ai__) ==  Prompt: Generate a concise git commit message written in present tense for         the following code diff with the given specifications below:
+Message language: en
+Commit count: 3
+Commit message must be a maximum of 8192 characters.
+You are to generate commit message or messages based on the count         passed, Reply with only the commit message or messages separated by a         new line, Exclude anything unnecessary such as translation.
+
+                    Choose a type from the type-to-description JSON below                     that best describes the git diff:
+                    {
+                    "docs": "Documentation only changes",
+                    "style": "Changes that do not affect the meaning of the                             code (white-space, formatting, missing                             semi-colons, etc)",
+                    "refactor": "A code change that neither fixes a bug nor                                 adds a feature",
+                    "perf": "A code change that improves performance",
+                    "test": "Adding missing tests or correcting existing                             tests",
+                    "build": "Changes that affect the build system or                             external dependencies",
+                    "ci": "Changes to our CI configuration files and scripts",
+                    "chore": "Other changes that don't modify src or test                             files",
+                    "revert": "Reverts a previous commit",
+                    "feat": "A new feature",
+                    "fix": "A bug fix"
+                    }
+                    
+The output response must be in format:
+<type>(<optional scope>): <commit message>  [46]
+
+INFO:     (__gemini_ai__) ==  Prompt: Generate a concise git commit message written in present tense for         the following code diff with the given specifications below:
+Message language: en
+Commit count: 3
+Commit message must be a maximum of 8192 characters.
+You are to generate commit message or messages based on the count         passed, Reply with only the commit message or messages separated by a         new line, Exclude anything unnecessary such as translation.
+
+                    Choose a type from the type-to-description JSON below                     that best describes the git diff:
+                    {
+                    "docs": "Documentation only changes",
+                    "style": "Changes that do not affect the meaning of the                             code (white-space, formatting, missing                             semi-colons, etc)",
+                    "refactor": "A code change that neither fixes a bug nor                                 adds a feature",
+                    "perf": "A code change that improves performance",
+                    "test": "Adding missing tests or correcting existing                             tests",
+                    "build": "Changes that affect the build system or                             external dependencies",
+                    "ci": "Changes to our CI configuration files and scripts",
+                    "chore": "Other changes that don't modify src or test                             files",
+                    "revert": "Reverts a previous commit",
+                    "feat": "A new feature",
+                    "fix": "A bug fix"
+                    }
+                    
+The output response must be in format:
+<type>(<optional scope>): <commit message>  [46]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add devcommit.py to generate commit messages', '', 'chore: Update gcai.log', '', 'chore: Update gcai.log', '', 'feat(gemini_ai): Implement Gemini AI commit message generation', '', 'chore: Update prompt.py']  [86]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add devcommit.py to generate commit messages', '```']  [86]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add devcommit.py to generate commit messages', '```', 'chore: Update gcai.log', '```', 'chore: Update gcai.log', '```', 'feat(gemini_ai): Implement Gemini AI commit message generation', '```', 'chore: Update prompt.py', '```']  [86]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add devcommit.py to generate commit messages', '```', 'chore: Update gcai.log', '```', 'chore: Update gcai.log', '```', 'feat(gemini_ai): Implement Gemini AI commit message generation', '```', 'chore: Update prompt.py', '```']  [86]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add devcommit.py to generate commit messages | chore: Update gcai.log | chore: Update gcai.log | feat(gemini_ai): Implement Gemini AI commit message generation | chore: Update prompt.py']  [86]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add devcommit.py to generate commit messages | chore: Update gcai.log | chore: Update gcai.log | feat(gemini_ai): Implement Gemini AI commit message generation | chore: Update prompt.py']  [86]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add devcommit.py to generate commit messages ', ' chore: Update gcai.log ', ' chore: Update gcai.log ', ' feat(gemini_ai): Implement Gemini AI commit message generation ', ' chore: Update prompt.py']  [88]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add devcommit.py to generate commit messages ', ' chore: Update gcai.log ', ' chore: Update gcai.log ', ' feat(gemini_ai): Implement Gemini AI commit message generation ', ' chore: Update prompt.py']  [88]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add devcommit.py to generate commit messages ', ' chore: Update gcai.log ', ' chore: Update gcai.log ', ' feat(gemini_ai): Implement Gemini AI commit message generation ', ' chore: Update prompt.py']  [88]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add devcommit.py to generate commit messages ', ' chore: Update gcai.log ', ' chore: Update gcai.log ', ' feat(gemini_ai): Implement Gemini AI commit message generation ', ' chore: Update prompt.py']  [88]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add devcommit.py to generate commit messages ', ' chore: Update gcai.log ', ' chore: Update gcai.log ', ' feat(gemini_ai): Implement Gemini AI commit message generation ', ' chore: Update prompt.py']  [86]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add devcommit.py to generate commit messages ', ' chore: Update gcai.log ', ' chore: Update gcai.log ', ' feat(gemini_ai): Implement Gemini AI commit message generation ', ' chore: Update prompt.py']  [86]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add devcommit.py to generate commit messages ', ' chore: Update gcai.log ', ' chore: Update gcai.log ', ' feat(gemini_ai): Implement Gemini AI commit message generation ', ' chore: Update prompt.py']  [86]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add devcommit.py to generate commit messages ', ' chore: Update gcai.log ', ' chore: Update gcai.log ', ' feat(gemini_ai): Implement Gemini AI commit message generation ', ' chore: Update prompt.py']  [86]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add devcommit.py to generate commit messages ', ' chore: Update gcai.log ', ' chore: Update gcai.log ', ' feat(gemini_ai): Implement Gemini AI commit message generation ', ' chore: Update prompt.py']  [86]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat(devcommit): Add devcommit CLI tool for AI-powered git commits']  [79]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add Gemini AI integration for commit message generation\n\nfeat(devcommit): Add Gemini AI integration for commit message generation']  [79]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat(devcommit): Add devcommit.py and gcai.log files for the devcommit application.']  [82]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add Gemini AI-powered commit message generation\n\nThis commit introduces a new feature that utilizes Gemini AI to generate commit messages. The `devcommit.py` script now leverages the Gemini API to analyze staged changes and produce relevant commit messages. Users can choose from multiple generated messages or use the default suggestion. The feature enhances the commit process by providing AI assistance in crafting concise and informative commit messages.']  [82]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat(devcommit): Refactor commit message selection\n\nThis commit refactors the commit message selection process to use InquirerPy for a more user-friendly experience.\n\nIt also adds logging to the `devcommit` module for improved debugging and visibility.']  [82]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add interactive commit message selection\n\nThis commit introduces an interactive prompt that allows users to select from a list of commit messages generated by the AI.']  [82]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat(devcommit): Add interactive commit message selection']  [82]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat(devcommit): Add interactive commit message selection']  [82]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat(devcommit): Add interactive commit message selection']  [82]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat(cli): Allow user to choose from multiple commit messages ', '\nrefactor(cli): Remove unnecessary prompt ', '\nchore(cli): Use inquirer for commit message selection ', '\nchore(cli): Use logger for logging ', '\nfix(cli): Fix prompt for commit message selection']  [82]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add interactive commit message selection\n\nfeat: Add logging for debug and info messages ', 'feat: Use --staged flag for diff when no commits exist ', 'chore: Add prompt for commit message selection ', 'chore: Remove unnecessary code ', 'refactor: Remove unused variables and code']  [82]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add interactive commit message selection', 'refactor: Refactor commit message selection logic', 'chore: Update logger instance', 'chore: Remove unused code', 'test: Add unit tests for interactive commit message selection']  [82]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat(devcommit): Add commit message selection ', ' chore(devcommit): Remove unused code ', ' refactor(devcommit): Improve commit message handling ', ' chore(devcommit): Add logger ', ' chore(devcommit): Improve logging messages']  [82]
+
+INFO:     (__devcommit__) ==  Commit messages: ['feat: Add interactive commit message selection ', ' chore: Update logging and remove redundant code ', ' chore: Simplify commit message generation ', ' chore: Update prompt to handle multiple messages ', ' chore: Improve commit message selection prompt']  [82]
