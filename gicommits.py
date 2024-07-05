@@ -1,3 +1,4 @@
+import os
 import subprocess
 from argparse import ArgumentParser, Namespace
 from typing import List, Optional, TypedDict
@@ -58,6 +59,13 @@ def parse_arguments() -> CommitFlag:
     )
 
 
+# Function to check if any commits exist
+def has_commits() -> bool:
+    result = subprocess.run(["git", "rev-parse", "HEAD"],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return result.returncode == 0
+
+
 # Main function
 def main(flags: CommitFlag):
     try:
@@ -87,19 +95,34 @@ def main(flags: CommitFlag):
 
         # Analyze changes
         with console.status("[bold green]The AI is analyzing your changes...[/bold green]", spinner="dots"):
-            diff = subprocess.run(
-                ["git", "diff", "HEAD"],
-                stdout=subprocess.PIPE,
-                text=True,
-            ).stdout
-            messages = generateCommitMessage(diff).splitlines()
+            if has_commits():
+                diff = subprocess.run(
+                    ["git", "diff", "HEAD"],
+                    stdout=subprocess.PIPE,
+                    text=True,
+                ).stdout
+            else:
+                diff = subprocess.run(
+                    ["git", "diff", "--staged"],
+                    stdout=subprocess.PIPE,
+                    text=True,
+                ).stdout
 
-        if not messages:
-            raise KnownError("No commit messages were generated. Try again.")
+            if not diff:
+                raise KnownError(
+                    "No diff could be generated. Ensure you have changes staged.")
+
+            commit_message = generateCommitMessage(diff)
+            if isinstance(commit_message, str):
+                commit_message = commit_message.splitlines()
+
+            if not commit_message:
+                raise KnownError(
+                    "No commit messages were generated. Try again.")
 
         # Prompt user to select a commit message
-        if len(messages) == 1:
-            message = messages[0]
+        if len(commit_message) == 1:
+            message = commit_message[0]
             confirm = prompt(
                 [
                     {
@@ -118,7 +141,7 @@ def main(flags: CommitFlag):
                     {
                         "type": "list",
                         "message": f"Pick a commit message to use: (Ctrl+c to exit)",
-                        "choices": messages + ["Cancel"],
+                        "choices": commit_message + ["Cancel"],
                     }
                 ]
             )
