@@ -7,42 +7,58 @@ import google.generativeai as genai
 from .. import Logger, config
 from .prompt import generate_prompt
 
-logger_instance = Logger("__main__")
+logger_instance = Logger("__gemini_ai__")
 logger = logger_instance.get_logger()
 
 
 def generateCommitMessage(diff: str) -> str:
     """Return a generated commit message using Gemini AI"""
-
-    genai.configure(api_key=config('GEMINI_API_KEY'))
-    LOCALE = config('LOCALE')
-    COMMIT_TYPE = config('COMMIT_TYPE')
-
-    generation_config = {
-        "response_mime_type": "text/plain",
-        "max_output_tokens": 8192,
-        "top_k": 64,
-        "top_p": 0.95,
-        "temperature": 5,
-    }
-
     try:
+        # Configure API Key
+        api_key = config('GEMINI_API_KEY')
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY not set.")
+        genai.configure(api_key=api_key)
+
+        # Load Configuration Values
+        locale = config('LOCALE', default="en-US")
+        commit_type = config('COMMIT_TYPE', default="general")
+        model_name = config('MODEL_NAME')
+        if not model_name:
+            raise ValueError("MODEL_NAME not set.")
+
+        generation_config = {
+            "response_mime_type": "text/plain",
+            "max_output_tokens": 8192,
+            "top_k": 64,
+            "top_p": 0.95,
+            "temperature": 0.7,
+        }
+
+        # Create Model and Start Chat
         model = genai.GenerativeModel(
             generation_config=generation_config,
-            model_name=config('MODEL_NAME'),
+            model_name=model_name,
         )
 
+        prompt_text = generate_prompt(8192, locale, commit_type)
         chat_session = model.start_chat(
             history=[
                 {
                     "role": "user",
-                    "parts": [generate_prompt(8192, LOCALE, COMMIT_TYPE)],
+                    "parts": [prompt_text],
                 },
             ]
         )
+
+        # Send the Diff as Message
+        response = chat_session.send_message(diff)
+        if response and hasattr(response, 'text'):
+            return response.text.strip()
+        else:
+            logger.error("No valid response received from Gemini AI.")
+            return "No valid commit message generated."
+
     except Exception as e:
-        logger.error(f"Error: {e}")
-
-    response = chat_session.send_message(diff)
-
-    return (response.text)
+        logger.error(f"Error generating commit message: {e}")
+        return f"Error generating commit message: {str(e)}"

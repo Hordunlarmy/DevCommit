@@ -1,0 +1,4 @@
+
+ERROR:     (__main__) ==  Error: MODEL_NAME not found. Declare it as envvar or define a default value.  [44]
+
+ERROR:     (__gemini_ai__) ==  Error: MODEL_NAME not found. Declare it as envvar or define a default value.  [44]
