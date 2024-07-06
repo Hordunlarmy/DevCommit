@@ -4,10 +4,10 @@ import os
 def create_dcommit():
     dcommit_content = """
     # DevCommit configurations
-    LOCALE = en
-    MAX_NO = 1
-    COMMIT_TYPE = conventional
-    MODEL_NAME = gemini-1.5-flash
+LOCALE = en
+MAX_NO = 1
+COMMIT_TYPE = conventional
+MODEL_NAME = gemini-1.5-flash
     """
 
     if 'VIRTUAL_ENV' in os.environ:

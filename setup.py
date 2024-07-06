@@ -1,13 +1,13 @@
 from setuptools import setup, find_packages
 from setuptools.command.install import install
 import subprocess
-
+import os
 
 class CustomInstallCommand(install):
     def run(self):
         install.run(self)
-        subprocess.call(['python3', '-m', 'scripts.create_dcommit'])
-
+        script_path = os.path.join(os.path.dirname(__file__), 'scripts', 'create_dcommit.py')
+        subprocess.call(['python3', script_path])
 
 setup(
     name='DevCommit',
@@ -33,10 +33,11 @@ setup(
     python_requires='>=3.7',
     entry_points={
         'console_scripts': [
-            'devcommit=main:main',
+            'devcommit=devcommit.main:main',
             'create-dcommit=scripts.create_dcommit:create_dcommit',
         ],
-    },    include_package_data=True,
+    },
+    include_package_data=True,
     package_data={
         '': ['*.dcommit'],
     },
@@ -47,3 +48,4 @@ setup(
         'install': CustomInstallCommand,
     }
 )
+

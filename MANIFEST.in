@@ -1,4 +1,4 @@
 include README.md COPYING
-recursive-include src *.py
+recursive-include devcommit *.py
 recursive-include scripts *.py
 
