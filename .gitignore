@@ -4,6 +4,5 @@
 **/scripts
 **/DevCommit.egg-info
 **dc.logs
-**devcommit.log
 **MANIFEST.in
-**setup.py
+setup.py

@@ -1,5 +1,4 @@
 import subprocess
-import sys
 from InquirerPy import inquirer
 from InquirerPy import get_style
 from rich.console import Console
