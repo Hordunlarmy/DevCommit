@@ -1,2 +1,11 @@
-<picture> <source media="(prefers-color-scheme: dark)" srcset="https://i.imgur.com/erPaZjc.png"> <source media="(prefers-color-scheme: light)" srcset="https://i.imgur.com/erPaZjc.png"> <img alt="README image" src="https://i.imgur.com/erPaZjc.png"> </picture>
+# DevCommit
 
+A command-line AI tool for autocommits.
+
+## Features
+
+- Automatic commit generation using AI.
+- Easy integration with your Git workflow.
+- Customizable options for commit messages.
+
+![README image](https://i.imgur.com/erPaZjc.png)
