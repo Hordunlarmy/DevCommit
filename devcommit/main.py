@@ -1,12 +1,13 @@
 import subprocess
-from InquirerPy import inquirer
-from InquirerPy import get_style
+
+from InquirerPy import get_style, inquirer
 from rich.console import Console
-from devcommit.utils.parser import CommitFlag, parse_arguments
+
 from devcommit.app.gemini_ai import generateCommitMessage
 from devcommit.utils.git import (KnownError, assert_git_repo,
                                  get_detected_message, get_staged_diff)
 from devcommit.utils.logger import Logger
+from devcommit.utils.parser import CommitFlag, parse_arguments
 
 logger_instance = Logger("__devcommit__")
 logger = logger_instance.get_logger()
@@ -14,8 +15,11 @@ logger = logger_instance.get_logger()
 
 # Function to check if any commits exist
 def has_commits() -> bool:
-    result = subprocess.run(["git", "rev-parse", "HEAD"],
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
     return result.returncode == 0
 
 
@@ -25,95 +29,108 @@ def main(flags: CommitFlag = None):
         flags = parse_arguments()
 
     try:
-        # Ensure current directory is a git repository
         assert_git_repo()
-
         console = Console()
 
-        # Stage all changes if flag is set
         if flags["stageAll"]:
-            with console.status(
-                "[bold green]Staging all changes...[/bold green]",
-                    spinner="dots"):
-                subprocess.run(["git", "add", "--update"], check=True)
+            stage_changes(console)
 
-        # Detect staged files
-        with console.status(
-            "[bold green]Detecting staged files...[/bold green]",
-                spinner="dots") as status:
-            staged = get_staged_diff(flags["excludeFiles"])
+        detect_staged_files(console, flags["excludeFiles"])
+        commit_message = analyze_changes(console)
 
+        selected_commit = prompt_commit_message(console, commit_message)
+        if selected_commit:
+            commit_changes(console, selected_commit, flags["rawArgv"])
+
+    except KnownError as error:
+        logger.error(str(error))
+        console.print(f"[bold red]✖ {error}[/bold red]")
+    except subprocess.CalledProcessError as error:
+        logger.error(str(error))
+        console.print(f"[bold red]✖ Git command failed: {error}[/bold red]")
+    except Exception as error:
+        logger.error(str(error))
+        console.print(f"[bold red]✖ {error}[/bold red]")
+
+
+def stage_changes(console):
+    with console.status(
+        "[bold green]Staging all changes...[/bold green]",
+        spinner="dots",
+    ):
+        subprocess.run(["git", "add", "--update"], check=True)
+
+
+def detect_staged_files(console, exclude_files):
+    with console.status(
+        "[bold green]Detecting staged files...[/bold green]",
+        spinner="dots",
+    ):
+        staged = get_staged_diff(exclude_files)
         if not staged:
             raise KnownError(
                 "No staged changes found. Stage your changes manually, or "
                 "automatically stage all changes with the `--stageAll` flag."
             )
-
         console.print(
             f"[bold green]{get_detected_message(staged['files'])}:"
             f"[/bold green]"
         )
         for file in staged["files"]:
             console.print(f" - {file}")
+        return staged
 
-        # Analyze changes
-        with console.status(
-                "[bold green]The AI is analyzing your changes...[/bold green]",
-                spinner="dots"):
-            diff = subprocess.run(
-                ["git", "diff", "--staged"],
-                stdout=subprocess.PIPE,
-                text=True,
-            ).stdout
 
-            if not diff:
-                raise KnownError(
-                    "No diff could be generated. "
-                    "Ensure you have changes staged.")
+def analyze_changes(console):
+    with console.status(
+        "[bold green]The AI is analyzing your changes...[/bold green]",
+        spinner="dots",
+    ):
+        diff = subprocess.run(
+            ["git", "diff", "--staged"],
+            stdout=subprocess.PIPE,
+            text=True,
+        ).stdout
 
-            commit_message = generateCommitMessage(diff)
-            if isinstance(commit_message, str):
-                commit_message = commit_message.split('|')
+        if not diff:
+            raise KnownError(
+                "No diff could be generated. Ensure you have changes staged."
+            )
 
-            if not commit_message:
-                raise KnownError(
-                    "No commit messages were generated. Try again.")
+        commit_message = generateCommitMessage(diff)
+        if isinstance(commit_message, str):
+            commit_message = commit_message.split("|")
 
-        # Prompt user to select a commit message
-        # logger.info(f"Commit messages: {commit_message}")
-        if len(commit_message) == 1:
-            tag = "Use This Commit Message? "
-        else:
-            tag = "Select A Commit Message:"
-        style = get_style({"instruction": "#abb2bf"}, style_override=False)
-        action = inquirer.fuzzy(
-            message=tag,
-            style=style,
-            choices=[
-                *commit_message, 'cancel',
-            ],
-            default=None,
-        ).execute()
+        if not commit_message:
+            raise KnownError("No commit messages were generated. Try again.")
 
-        # Check user selection
-        if action == 'cancel':
-            console.print("[bold red]Commit cancelled[/bold red]")
-            return
-        else:
-            commit = action
+        return commit_message
 
-        # Commit changes
-        subprocess.run(["git", "commit", "-m", commit, *flags["rawArgv"]])
-        console.print("[bold green]✔ Successfully committed![/bold green]")
 
-    except KnownError as error:
-        console.print(f"[bold red]✖ {error}[/bold red]")
-    except subprocess.CalledProcessError as error:
-        console.print(f"[bold red]✖ Git command failed: {error}[/bold red]")
-    except Exception as error:
-        console.print(f"[bold red]✖ {error}[/bold red]")
+def prompt_commit_message(console, commit_message):
+    tag = (
+        "Use This Commit Message? "
+        if len(commit_message) == 1
+        else "Select A Commit Message:"
+    )
+    style = get_style({"instruction": "#abb2bf"}, style_override=False)
+    action = inquirer.fuzzy(
+        message=tag,
+        style=style,
+        choices=[*commit_message, "cancel"],
+        default=None,
+    ).execute()
+
+    if action == "cancel":
+        console.print("[bold red]Commit cancelled[/bold red]")
+        return None
+    return action
+
+
+def commit_changes(console, commit, raw_argv):
+    subprocess.run(["git", "commit", "-m", commit, *raw_argv])
+    console.print("[bold green]✔ Successfully committed![/bold green]")
 
 
 if __name__ == "__main__":
     main()
-
