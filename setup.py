@@ -4,6 +4,9 @@ import subprocess
 from setuptools import find_packages, setup
 from setuptools.command.install import install
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 
 class CustomInstallCommand(install):
     def run(self):
@@ -20,7 +23,7 @@ setup(
     author="HordunTech",
     author_email="horduntech@gmail.com",
     description="A command-line AI tool for autocommits",
-    long_description=open("README.md").read(),
+    long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/hordunlarmy/DevCommit",
     packages=find_packages(),
