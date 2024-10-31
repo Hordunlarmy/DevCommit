@@ -29,6 +29,9 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction
 
+      - name: Install setuptools and wheel
+        run: pip install setuptools wheel
+
       - name: Build package
         run: python setup.py sdist bdist_wheel
 

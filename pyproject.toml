@@ -9,7 +9,7 @@ homepage = "https://github.com/hordunlarmy/DevCommit"
 repository = "https://github.com/hordunlarmy/DevCommit"
 
 [project.dependencies]
-python = "^3.7"
+python = "^3.11"
 inquirerpy = "^0.3.4"
 google-generativeai = "^0.7.1"
 rich = "^13.7.1"
