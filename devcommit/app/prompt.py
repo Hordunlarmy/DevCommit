@@ -56,18 +56,28 @@ def specify_commit_format(commit_type: CommitType) -> str:
 def generate_prompt(
     max_length: int, max_no: int, locale: str, commit_type: CommitType
 ) -> str:
-    """Prompt Passed to Gemini for Generating a Git Commit Message"""
+    """Generate a detailed prompt for Gemini to create a strict Git commit message."""
 
     prompt_parts = [
-        "Generate a concise git commit message written in present tense for the following code diff with the given specifications below:",
-        f"Message language: {locale}",
-        f"Commit count: {max_no}",
-        "Max_line_per_commit: 1",
-        "Separator: '|'",
-        f"Commit message must be a maximum of {max_length} characters.",
-        "You are to generate commit message or messages based on the count passed. Reply with only the commit message or messages. Exclude anything unnecessary such as translation or description. Only return the commit message or messages. Separation should only be done with Separator not newline.",
-        commit_types[commit_type],
-        specify_commit_format(commit_type),
+        "You are tasked with generating Git commit messages based solely on the following code diff.",
+        "Please adhere to the following specifications meticulously:",
+        # Language of the commit message
+        f"1. The language of the commit message should be: {locale}. This specifies the linguistic format of the message.",
+        # Number of commit messages
+        f"2. The total number of commit messages required is: {max_no}. Ensure that you generate exactly this number of messages.",
+        # Line and message formatting
+        "3. Each commit message must be succinct and limited to a single line. Do not exceed one line per message.",
+        # Separator specifications
+        "4. If multiple messages are generated, they must be separated using the character '|' only. Do not use any other characters or new lines for separation.",
+        # Length restrictions
+        f"5. Each individual commit message must not exceed {max_length} characters in length. This is a strict upper limit.",
+        # Exclusions from response
+        "6. Generate only the commit message(s) as specified. Do not include any additional information, context, translations, or descriptions in your response.",
+        # Commit Type instructions
+        f"7. Refer to the following commit type specification: {commit_types[commit_type]}. This will guide the nature of the commit messages you produce.",
+        # Formatting requirements
+        f"8. Follow the specific format required for the given commit type, which is defined as follows: {specify_commit_format(commit_type)}.",
     ]
 
+    # Return the fully constructed prompt as a single formatted string
     return "\n".join(filter(bool, prompt_parts))
