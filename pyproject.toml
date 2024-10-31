@@ -1,4 +1,4 @@
-[project]
+[tool.poetry]
 name = "devcommit"
 version = "0.1.1"
 description = "A command-line AI tool for autocommits"
