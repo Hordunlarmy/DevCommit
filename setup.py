@@ -4,8 +4,12 @@ import subprocess
 from setuptools import find_packages, setup
 from setuptools.command.install import install
 
-with open("README.md", "r") as fh:
-    long_description = fh.read()
+try:
+    import pypandoc
+
+    long_description = pypandoc.convert_file("README.md", "rst")
+except (IOError, ImportError):
+    long_description = open("README.md").read()
 
 
 class CustomInstallCommand(install):
@@ -24,7 +28,6 @@ setup(
     author_email="horduntech@gmail.com",
     description="A command-line AI tool for autocommits",
     long_description=long_description,
-    long_description_content_type="text/markdown",
     url="https://github.com/hordunlarmy/DevCommit",
     packages=find_packages(),
     install_requires=[
