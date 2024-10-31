@@ -19,7 +19,7 @@ class CustomInstallCommand(install):
 
 setup(
     name="DevCommit",
-    version="0.1.1",
+    version="0.1.3",
     author="HordunTech",
     author_email="horduntech@gmail.com",
     description=""" A command-line AI tool for autocommits """,
