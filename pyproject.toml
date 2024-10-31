@@ -1,21 +1,23 @@
 [project]
-readme = "README.md"
-
-[tool.poetry]
 name = "devcommit"
-version = "0.1.0"
+version = "0.1.1"
 description = "A command-line AI tool for autocommits"
-authors = ["Hordunlarmy <Hordunlarmy@gmail.com>"]
+authors = ["HordunTech <horduntech@gmail.com>"]
+license = "MIT"
+readme = {file = "README.md", content-type = "text/markdown"}
+homepage = "https://github.com/hordunlarmy/DevCommit"
+repository = "https://github.com/hordunlarmy/DevCommit"
 
-[tool.poetry.dependencies]
-python = "^3.10"
+[project.dependencies]
+python = "^3.7"
 inquirerpy = "^0.3.4"
 google-generativeai = "^0.7.1"
 rich = "^13.7.1"
 python-decouple = "^3.8"
-pypandoc = "^1.14"
 
-[tool.poetry.dev-dependencies]
+[project.scripts]
+devcommit = "devcommit.main:main"
+create-dcommit = "scripts.create_dcommit:create_dcommit"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
