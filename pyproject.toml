@@ -4,7 +4,7 @@ version = "0.1.1"
 description = "A command-line AI tool for autocommits"
 authors = ["HordunTech <horduntech@gmail.com>"]
 license = "MIT"
-readme = {file = "README.md", content-type = "text/markdown"}
+readme = { file = "README.md", content_type = "text/markdown" }
 homepage = "https://github.com/hordunlarmy/DevCommit"
 repository = "https://github.com/hordunlarmy/DevCommit"
 
