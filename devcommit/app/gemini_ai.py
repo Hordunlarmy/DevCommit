@@ -5,6 +5,7 @@
 import google.generativeai as genai
 
 from devcommit.utils.logger import Logger, config
+
 from .prompt import generate_prompt
 
 logger_instance = Logger("__gemini_ai__")
@@ -15,16 +16,16 @@ def generateCommitMessage(diff: str) -> str:
     """Return a generated commit message using Gemini AI"""
     try:
         # Configure API Key
-        api_key = config('GEMINI_API_KEY')
+        api_key = config("GEMINI_API_KEY")
         if not api_key:
             raise ValueError("GEMINI_API_KEY not set.")
         genai.configure(api_key=api_key)
 
         # Load Configuration Values
-        max_no = config('MAX_NO', default=1)
-        locale = config('LOCALE', default="en-US")
-        commit_type = config('COMMIT_TYPE', default="general")
-        model_name = config('MODEL_NAME', default="gemini-1.5-flash")
+        max_no = config("MAX_NO", default=1)
+        locale = config("LOCALE", default="en-US")
+        commit_type = config("COMMIT_TYPE", default="general")
+        model_name = config("MODEL_NAME", default="gemini-1.5-flash")
         if not model_name:
             raise ValueError("MODEL_NAME not set.")
 
@@ -56,7 +57,7 @@ def generateCommitMessage(diff: str) -> str:
         # Send the Diff as Message
         # logger.info(f"Diff: {diff}")
         response = chat_session.send_message(diff)
-        if response and hasattr(response, 'text'):
+        if response and hasattr(response, "text"):
             return response.text.strip()
         else:
             logger.error("No valid response received from Gemini AI.")

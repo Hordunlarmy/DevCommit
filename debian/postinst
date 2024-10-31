@@ -1,0 +1,5 @@
+#!/bin/bash
+set -e
+echo "Running post-installation script for DevCommit..."
+python3 /usr/share/devcommit/create_dcommit.py
+exit 0

@@ -6,3 +6,5 @@
 **dc.logs
 **MANIFEST.in
 setup.py
+**/.venv
+**venv

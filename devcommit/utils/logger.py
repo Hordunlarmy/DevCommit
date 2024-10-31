@@ -26,9 +26,9 @@ class Logger:
         )
 
         # file handler
-        self.file_handler = logging.FileHandler(log_file)
-        self.file_handler.setFormatter(self.formatter)
-        self.logger.addHandler(self.file_handler)
+        # self.file_handler = logging.FileHandler(log_file)
+        # self.file_handler.setFormatter(self.formatter)
+        # self.logger.addHandler(self.file_handler)
 
         # console handler
         # self.console_handler = logging.StreamHandler()
