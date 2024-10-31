@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "devcommit"
-version = "0.1.0"
+version = "0.1.4"
 description = ""
 authors = ["Hordunlarmy <Hordunlarmy@gmail.com>"]
 
@@ -10,7 +10,6 @@ inquirerpy = "^0.3.4"
 google-generativeai = "^0.7.1"
 rich = "^13.7.1"
 python-decouple = "^3.8"
-pypandoc = "^1.14"
 
 [tool.poetry.dev-dependencies]
 
