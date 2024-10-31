@@ -1,7 +1,10 @@
+[project]
+readme = "README.md"
+
 [tool.poetry]
 name = "devcommit"
 version = "0.1.0"
-description = ""
+description = "A command-line AI tool for autocommits"
 authors = ["Hordunlarmy <Hordunlarmy@gmail.com>"]
 
 [tool.poetry.dependencies]
@@ -17,3 +20,4 @@ pypandoc = "^1.14"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
