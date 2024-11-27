@@ -32,9 +32,9 @@ def generateCommitMessage(diff: str) -> str:
         generation_config = {
             "response_mime_type": "text/plain",
             "max_output_tokens": 8192,
-            "top_k": 64,
-            "top_p": 0.95,
-            "temperature": 0.7,
+            "top_k": 20,
+            "top_p": 0.8,
+            "temperature": 0.5,
         }
 
         # Create Model and Start Chat
