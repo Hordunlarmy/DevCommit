@@ -16,7 +16,7 @@ requests = "^2.31.0"
 
 [tool.poetry.extras]
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 
 [tool.poetry.scripts]
 devcommit = "devcommit.main:main"
