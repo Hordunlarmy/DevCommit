@@ -1,11 +1,25 @@
 [project]
 name = "devcommit"
-version = "0.1.4.4"
+version = "0.1.4.5"
 description = "AI-powered git commit message generator"
+readme = "README.md"
+license = {file = "COPYING"}
 authors = [
     {name = "Hordunlarmy", email = "Hordunlarmy@gmail.com"}
 ]
 requires-python = ">=3.10"
+keywords = ["git", "commit", "ai", "devcommit", "commit-message", "ai-commit", "gemini", "openai", "ollama", "groq"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Version Control :: Git",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
     "inquirerpy>=0.3.4",
     "google-generativeai>=0.7.1",
@@ -15,6 +29,12 @@ dependencies = [
     "python-decouple>=3.8",
     "requests>=2.31.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Hordunlarmy/DevCommit"
+Repository = "https://github.com/Hordunlarmy/DevCommit"
+Issues = "https://github.com/Hordunlarmy/DevCommit/issues"
+documentation = "https://github.com/Hordunlarmy/DevCommit#readme"
 
 [project.optional-dependencies]
 
