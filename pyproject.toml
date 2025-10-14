@@ -13,6 +13,10 @@ python-decouple = "^3.8"
 
 [tool.poetry.dev-dependencies]
 
+[tool.poetry.scripts]
+devcommit = "devcommit.main:main"
+create-dcommit = "scripts.create_dcommit:create_dcommit"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
