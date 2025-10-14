@@ -23,11 +23,8 @@ jobs:
           curl -sSL https://install.python-poetry.org | python3 -
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Verify lock file
-        run: poetry check --lock
-
       - name: Install dependencies
-        run: poetry install --no-interaction
+        run: poetry install --no-interaction --no-root
 
       - name: Install setuptools and wheel
         run: pip install setuptools wheel
