@@ -1,7 +1,31 @@
+[project]
+name = "devcommit"
+version = "0.1.4.4"
+description = "AI-powered git commit message generator"
+authors = [
+    {name = "Hordunlarmy", email = "Hordunlarmy@gmail.com"}
+]
+requires-python = ">=3.10"
+dependencies = [
+    "inquirerpy>=0.3.4",
+    "google-generativeai>=0.7.1",
+    "openai>=1.0.0",
+    "anthropic>=0.25.0",
+    "rich>=13.7.1",
+    "python-decouple>=3.8",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+
+[project.scripts]
+devcommit = "devcommit.main:main"
+create-dcommit = "scripts.create_dcommit:create_dcommit"
+
 [tool.poetry]
 name = "devcommit"
 version = "0.1.4.4"
-description = ""
+description = "AI-powered git commit message generator"
 authors = ["Hordunlarmy <Hordunlarmy@gmail.com>"]
 
 [tool.poetry.dependencies]
@@ -14,13 +38,7 @@ rich = "^13.7.1"
 python-decouple = "^3.8"
 requests = "^2.31.0"
 
-[tool.poetry.extras]
-
 [tool.poetry.group.dev.dependencies]
-
-[tool.poetry.scripts]
-devcommit = "devcommit.main:main"
-create-dcommit = "scripts.create_dcommit:create_dcommit"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
