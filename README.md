@@ -17,11 +17,22 @@ A command-line AI tool for autocommits.
 ## Installation
 
 1. **Install DevCommit**  
-   Run the following command to install DevCommit:
-
+   
+   **Option 1: Using pip (local installation)**
    ```bash
    pip install devcommit
    ```
+   
+   **Option 2: Using pipx (global installation, recommended)**
+   ```bash
+   # Install pipx if you don't have it
+   python3 -m pip install --user pipx
+   python3 -m pipx ensurepath
+   
+   # Install DevCommit globally
+   pipx install devcommit
+   ```
+   > **💡 Why pipx?** pipx installs CLI tools in isolated environments, preventing dependency conflicts while making them globally available.
    
    **All AI providers are included by default!** ✅ Gemini, OpenAI, Groq, Anthropic, Ollama, and Custom API support.
 
