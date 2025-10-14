@@ -4,11 +4,13 @@ A command-line AI tool for autocommits.
 
 ## Features
 
-- Automatic commit generation using AI.
-- Easy integration with your Git workflow.
-- Customizable options for commit messages.
-- Support for directory-based commits - create separate commits for each root directory.
-- Interactive mode to choose between global or directory-based commits.
+- 🤖 **Multi-AI Provider Support** - Choose from Gemini, Groq, OpenAI, Claude, Ollama, or custom APIs
+- 🚀 Automatic commit generation using AI
+- 📁 Directory-based commits - create separate commits for each root directory
+- 🎯 Interactive mode to choose between global or directory-based commits
+- ⚙️ Flexible configuration - use environment variables or .dcommit file
+- 🏠 Self-hosted model support - use your own AI infrastructure
+- 🆓 Multiple free tier options available
 
 ![DevCommit Demo](https://i.imgur.com/erPaZjc.png)
 
@@ -20,18 +22,25 @@ A command-line AI tool for autocommits.
    ```bash
    pip install devcommit
    ```
+   
+   **All AI providers are included by default!** ✅ Gemini, OpenAI, Groq, Anthropic, Ollama, and Custom API support.
 
 2. **Set Up Configuration (Required: API Key)**  
-   DevCommit requires a Google Gemini API key. You can configure it using **any** of these methods:
+   DevCommit requires an API key for your chosen AI provider. You can configure it using **any** of these methods:
 
    **Priority Order:** `.dcommit` file → Environment Variables → Defaults
 
    ### Option 1: Environment Variables (Quickest)
    ```bash
+   # Using Gemini (default)
    export GEMINI_API_KEY='your-api-key-here'
    
-   # Optional: Add to ~/.bashrc or ~/.zshrc for persistence
-   echo "export GEMINI_API_KEY='your-api-key-here'" >> ~/.bashrc
+   # Or using Groq (recommended for free tier)
+   export AI_PROVIDER='groq'
+   export GROQ_API_KEY='your-groq-key'
+   
+   # Add to ~/.bashrc or ~/.zshrc for persistence
+   echo "export GEMINI_API_KEY='your-key'" >> ~/.bashrc
    ```
 
    ### Option 2: .dcommit File (Home Directory)
@@ -134,19 +143,104 @@ devcommit --commitType conventional
 devcommit --excludeFiles package-lock.json yarn.lock
 ```
 
+## AI Provider Support
+
+DevCommit now supports **multiple AI providers**! Choose from:
+
+| Provider | Free Tier | Speed | Quality | Get API Key |
+|----------|-----------|-------|---------|-------------|
+| 🆓 **Gemini** | 15 req/min, 1M/day | Fast | Good | [Get Key](https://aistudio.google.com/app/apikey) |
+| ⚡ **Groq** | Very generous | **Fastest** | Good | [Get Key](https://console.groq.com/keys) |
+| 🤖 **OpenAI** | $5 trial | Medium | **Best** | [Get Key](https://platform.openai.com/api-keys) |
+| 🧠 **Anthropic** | Limited trial | Medium | Excellent | [Get Key](https://console.anthropic.com/) |
+| 🏠 **Ollama** | **Unlimited** | Medium | Good | [Install](https://ollama.ai/) |
+| 🔧 **Custom** | Varies | Varies | Varies | Your server |
+
+### Quick Setup Examples
+
+**Using Groq (Recommended for free tier):**
+```bash
+export AI_PROVIDER=groq
+export GROQ_API_KEY='your-groq-api-key'
+devcommit
+```
+
+**Using Ollama (Local, no API key needed):**
+```bash
+# Install Ollama: https://ollama.ai/
+ollama pull llama3
+export AI_PROVIDER=ollama
+devcommit
+```
+
+**Using Custom API:**
+```bash
+export AI_PROVIDER=custom
+export CUSTOM_API_URL='http://localhost:8000/v1'
+export CUSTOM_API_KEY='your-key'
+export CUSTOM_MODEL='your-model'
+devcommit
+```
+
 ## Configuration Reference
 
 All configuration can be set via **environment variables** or **`.dcommit` file**:
 
+### AI Provider Settings
+
 | Variable | Description | Default | Options |
 |----------|-------------|---------|---------|
-| `GEMINI_API_KEY` | Your Google Gemini API key **(required)** | - | Your API key |
+| `AI_PROVIDER` | Which AI service to use | `gemini` | `gemini`, `openai`, `groq`, `anthropic`, `ollama`, `custom` |
+
+### Provider-Specific Settings
+
+**Gemini:**
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `GEMINI_API_KEY` | Google Gemini API key | - |
+| `GEMINI_MODEL` | Model name | `gemini-1.5-flash` |
+
+**OpenAI:**
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OPENAI_API_KEY` | OpenAI API key | - |
+| `OPENAI_MODEL` | Model name | `gpt-4o-mini` |
+
+**Groq:**
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `GROQ_API_KEY` | Groq API key ([Get it here](https://console.groq.com/)) | - |
+| `GROQ_MODEL` | Model name | `llama-3.3-70b-versatile` |
+
+**Anthropic:**
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ANTHROPIC_API_KEY` | Anthropic API key | - |
+| `ANTHROPIC_MODEL` | Model name | `claude-3-haiku-20240307` |
+
+**Ollama (Local):**
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OLLAMA_BASE_URL` | Ollama server URL | `http://localhost:11434` |
+| `OLLAMA_MODEL` | Model name | `llama3` |
+
+**Custom (OpenAI-compatible):**
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `CUSTOM_API_URL` | API endpoint URL | - |
+| `CUSTOM_API_KEY` | API key (optional) | - |
+| `CUSTOM_MODEL` | Model name | `default` |
+
+### General Settings
+
+| Variable | Description | Default | Options |
+|----------|-------------|---------|---------|
 | `LOCALE` | Language for commit messages | `en-US` | Any locale code (e.g., `en`, `es`, `fr`) |
 | `MAX_NO` | Number of commit message suggestions | `1` | Any positive integer |
 | `COMMIT_TYPE` | Style of commit messages | `general` | `general`, `conventional`, etc. |
-| `MODEL_NAME` | Gemini model to use | `gemini-1.5-flash` | Any Gemini model name |
 | `COMMIT_MODE` | Default commit strategy | `auto` | `auto`, `directory`, `global` |
 | `EXCLUDE_FILES` | Files to exclude from diff | `package-lock.json, pnpm-lock.yaml, yarn.lock, *.lock` | Comma-separated file patterns |
+| `MAX_TOKENS` | Maximum tokens for AI response | `8192` | Any positive integer |
 
 ### Configuration Priority
 1. **`.dcommit` file** (highest priority)
@@ -155,24 +249,19 @@ All configuration can be set via **environment variables** or **`.dcommit` file*
 
 ### Using Environment Variables
 ```bash
+# Basic setup with Gemini (default)
 export GEMINI_API_KEY='your-api-key-here'
 export COMMIT_MODE='directory'
 export COMMIT_TYPE='conventional'
-export MAX_NO=3
-export EXCLUDE_FILES='*.lock,dist/*,build/*'
 
-# Or add to ~/.bashrc for persistence
+# Or use Groq (faster, free)
+export AI_PROVIDER='groq'
+export GROQ_API_KEY='your-groq-key'
+
+# Add to ~/.bashrc for persistence
 ```
 
 ### Using .dcommit File
-```
-GEMINI_API_KEY = your-api-key-here
-LOCALE = en
-MAX_NO = 3
-COMMIT_TYPE = conventional
-MODEL_NAME = gemini-1.5-flash
-COMMIT_MODE = directory
-EXCLUDE_FILES = *.lock, dist/*, build/*, node_modules/*
-```
+See `.dcommit.example` for a complete configuration template with all providers.
 
 **Note:** The `.dcommit` file is **optional**. DevCommit will work with just environment variables!

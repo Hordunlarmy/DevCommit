@@ -30,8 +30,11 @@ setup(
     install_requires=[
         "inquirerpy",
         "google-generativeai",
+        "openai>=1.0.0",
+        "anthropic>=0.25.0",
         "rich",
         "python-decouple",
+        "requests",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
