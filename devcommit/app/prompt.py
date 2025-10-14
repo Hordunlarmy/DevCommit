@@ -64,15 +64,17 @@ def generate_prompt(
         # Language of the commit message
         f"1. The language of the commit message should be: {locale}. This specifies the linguistic format of the message.",
         # Number of commit messages
-        f"2. The total number of commit messages required is: {max_no}. Ensure that you generate exactly this number of messages.",
+        f"2. You MUST generate EXACTLY {max_no} commit message(s). No more, no less. This is mandatory.",
         # Line and message formatting
         "3. Each commit message must be succinct and limited to a single line. Do not exceed one line per message.",
         # Separator specifications
-        "4. If multiple messages are generated, they must be separated using the character '|' only. Do not use any other characters or new lines for separation.",
+        f"4. IMPORTANT: If generating {max_no} > 1 messages, separate them with '|' OR put each on a new line. Example for 3 messages:",
+        "   - Option 1: message1|message2|message3",
+        "   - Option 2: message1\\nmessage2\\nmessage3",
         # Length restrictions
         f"5. Each individual commit message must not exceed {max_length} characters in length. This is a strict upper limit.",
         # Exclusions from response
-        "6. Generate only the commit message(s) as specified. Do not include any additional information, context, translations, or descriptions in your response.",
+        "6. Generate ONLY the commit message(s) as specified. Do NOT include: markdown code blocks (```), numbering, bullet points, explanations, or any formatting.",
         # Commit Type instructions
         f"7. Refer to the following commit type specification: {commit_types[commit_type]}. This will guide the nature of the commit messages you produce.",
         # Formatting requirements

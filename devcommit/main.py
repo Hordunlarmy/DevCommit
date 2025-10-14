@@ -39,9 +39,33 @@ def main(flags: CommitFlag = None):
         assert_git_repo()
         console = Console()
         
-        # Print header
-        console.print("\n[bold cyan]DevCommit[/bold cyan] [dim]│ AI-powered commit generator[/dim]")
-        console.print("[dim]" + "─" * 50 + "[/dim]\n")
+        # Print stylish header with gradient effect
+        console.print()
+        console.print("╭" + "─" * 60 + "╮", style="bold cyan")
+        console.print("│" + " " * 60 + "│", style="bold cyan")
+        console.print("│" + "  🚀 [bold white on cyan] DevCommit [/bold white on cyan]  [bold white]AI-Powered Commit Generator[/bold white]".ljust(76) + "│", style="bold cyan")
+        console.print("│" + " " * 60 + "│", style="bold cyan")
+        console.print("╰" + "─" * 60 + "╯", style="bold cyan")
+        
+        # Display provider and model info
+        provider = config("AI_PROVIDER", default="gemini").lower()
+        model = ""
+        
+        if provider == "ollama":
+            model = config("OLLAMA_MODEL", default="llama3")
+        elif provider == "gemini":
+            model = config("GEMINI_MODEL", default=None) or config("MODEL_NAME", default="gemini-1.5-flash")
+        elif provider == "openai":
+            model = config("OPENAI_MODEL", default="gpt-4o-mini")
+        elif provider == "groq":
+            model = config("GROQ_MODEL", default="llama-3.3-70b-versatile")
+        elif provider == "anthropic":
+            model = config("ANTHROPIC_MODEL", default="claude-3-haiku-20240307")
+        elif provider == "custom":
+            model = config("CUSTOM_MODEL", default="default")
+        
+        console.print(f"[dim]Provider:[/dim] [bold magenta]{provider}[/bold magenta] [dim]│[/dim] [dim]Model:[/dim] [bold magenta]{model}[/bold magenta]")
+        console.print()
 
         if flags["stageAll"]:
             stage_changes(console)
@@ -72,37 +96,43 @@ def main(flags: CommitFlag = None):
         else:
             process_global_commit(console, flags)
         
-        # Print completion message
-        console.print("\n[bold green]═══════════════════════════════════════════════════[/bold green]")
-        console.print("[bold green]✓[/bold green] [green]All commits completed successfully![/green]")
-        console.print("[bold green]═══════════════════════════════════════════════════[/bold green]\n")
+        # Print stylish completion message
+        console.print()
+        console.print("╭" + "─" * 60 + "╮", style="bold green")
+        console.print("│" + " " * 60 + "│", style="bold green")
+        console.print("│" + "     ✨ [bold white]All commits completed successfully![/bold white] ✨     ".ljust(68) + "│", style="bold green")
+        console.print("│" + " " * 60 + "│", style="bold green")
+        console.print("╰" + "─" * 60 + "╯", style="bold green")
+        console.print()
 
     except KeyboardInterrupt:
-        console.print("\n\n[yellow]Operation cancelled by user[/yellow]")
+        console.print("\n\n[bold yellow]⚠️  Operation cancelled by user[/bold yellow]\n")
         return
     except KnownError as error:
         logger.error(str(error))
-        console.print(f"\n[red]Error: {error}[/red]")
+        console.print(f"\n[bold red]❌ Error:[/bold red] [red]{error}[/red]\n")
     except subprocess.CalledProcessError as error:
         logger.error(str(error))
-        console.print(f"\n[red]Git command failed: {error}[/red]")
+        console.print(f"\n[bold red]❌ Git command failed:[/bold red] [red]{error}[/red]\n")
     except Exception as error:
         logger.error(str(error))
-        console.print(f"\n[red]Error: {error}[/red]")
+        console.print(f"\n[bold red]❌ Unexpected error:[/bold red] [red]{error}[/red]\n")
 
 
 def stage_changes(console):
     with console.status(
-        "→ Staging changes...",
+        "[cyan]🔄 Staging changes...[/cyan]",
         spinner="dots",
+        spinner_style="cyan"
     ):
         subprocess.run(["git", "add", "--update"], check=True)
 
 
 def detect_staged_files(console, exclude_files):
     with console.status(
-        "→ Detecting staged files...",
+        "[cyan]🔍 Detecting staged files...[/cyan]",
         spinner="dots",
+        spinner_style="cyan"
     ):
         staged = get_staged_diff(exclude_files)
         if not staged:
@@ -111,10 +141,12 @@ def detect_staged_files(console, exclude_files):
                 "automatically stage all changes with the `--stageAll` flag."
             )
         console.print(
-            f"\n[bold green]✓[/bold green] {get_detected_message(staged['files'])}"
+            f"\n[bold green]✅ {get_detected_message(staged['files'])}[/bold green]"
         )
+        console.print("[dim]" + "─" * 60 + "[/dim]")
         for file in staged["files"]:
-            console.print(f"  • {file}")
+            console.print(f"  [cyan]▸[/cyan] [white]{file}[/white]")
+        console.print("[dim]" + "─" * 60 + "[/dim]")
         return staged
 
 
@@ -122,8 +154,9 @@ def analyze_changes(console):
     import sys
     
     with console.status(
-        "→ AI analyzing changes...",
+        "[magenta]🤖 AI analyzing changes...[/magenta]",
         spinner="dots",
+        spinner_style="magenta"
     ):
         diff = subprocess.run(
             ["git", "diff", "--staged"],
@@ -163,13 +196,17 @@ def prompt_commit_message(console, commit_message):
         else "Confirm commit message"
     )
     style = get_style({
-        "question": "#00afaf bold",
-        "questionmark": "#00afaf bold",
-        "pointer": "#00afaf",
-        "instruction": "#808080",
-        "answer": "#00afaf bold",
+        "question": "#00d7ff bold",
+        "questionmark": "#00d7ff bold",
+        "pointer": "#00d7ff bold",
+        "instruction": "#7f7f7f",
+        "answer": "#00d7ff bold",
         "fuzzy_info": ""  # Hide the counter
     }, style_override=False)
+    
+    console.print()
+    console.print("[bold cyan]📝 Generated Commit Messages:[/bold cyan]")
+    console.print()
     
     # Add numbered options (plain text since InquirerPy doesn't support ANSI in choices)
     numbered_choices = []
@@ -181,7 +218,7 @@ def prompt_commit_message(console, commit_message):
     
     choices = [
         *numbered_choices,
-        {"name": "  [Cancel]", "value": "cancel"}
+        {"name": "  ❌ [Cancel]", "value": "cancel"}
     ]
     
     action = inquirer.fuzzy(
@@ -189,43 +226,48 @@ def prompt_commit_message(console, commit_message):
         style=style,
         choices=choices,
         default=None,
-        instruction="(Type to filter)",
+        instruction="(Type to filter or use arrows)",
         qmark="❯",
         info=False  # Disable info/counter
     ).execute()
 
     if action == "cancel":
-        console.print("\n[yellow]Commit cancelled[/yellow]")
+        console.print("\n[bold yellow]⚠️  Commit cancelled[/bold yellow]\n")
         return None
     return action
 
 
 def commit_changes(console, commit, raw_argv):
     subprocess.run(["git", "commit", "-m", commit, *raw_argv])
-    console.print("[bold green]✓[/bold green] Committed successfully")
+    console.print("\n[bold green]✅ Committed successfully![/bold green]")
 
 
 def prompt_commit_strategy(console, grouped):
     """Prompt user to choose between global or directory-based commits."""
-    console.print("\n[bold cyan]═══ Multiple directories detected ═══[/bold cyan]")
+    console.print()
+    console.print("╭" + "─" * 60 + "╮", style="bold yellow")
+    console.print("│" + "  📂 [bold white]Multiple directories detected[/bold white]".ljust(70) + "│", style="bold yellow")
+    console.print("╰" + "─" * 60 + "╯", style="bold yellow")
+    console.print()
+    
     for directory, files in grouped.items():
-        console.print(f"  [cyan]▸[/cyan] [bold]{directory}[/bold] [dim]({len(files)} file(s))[/dim]")
+        console.print(f"  [yellow]▸[/yellow] [bold white]{directory}[/bold white] [dim]({len(files)} file(s))[/dim]")
     console.print()
     
     style = get_style({
-        "question": "#00afaf bold",
-        "questionmark": "#00afaf bold",
-        "pointer": "#00afaf",
-        "instruction": "#808080",
-        "answer": "#00afaf bold"
+        "question": "#00d7ff bold",
+        "questionmark": "#00d7ff bold",
+        "pointer": "#00d7ff bold",
+        "instruction": "#7f7f7f",
+        "answer": "#00d7ff bold"
     }, style_override=False)
     
     strategy = inquirer.select(
         message="Commit strategy",
         style=style,
         choices=[
-            {"name": "  One commit for all changes", "value": False},
-            {"name": "  Separate commits per directory", "value": True},
+            {"name": "  🌐 One commit for all changes", "value": False},
+            {"name": "  📁 Separate commits per directory", "value": True},
         ],
         default=None,
         instruction="(Use arrow keys)",
@@ -247,16 +289,20 @@ def process_per_directory_commits(console, staged, flags):
     """Process separate commits for each directory."""
     grouped = group_files_by_directory(staged["files"])
     
-    console.print(f"\n[bold cyan]═══ Processing {len(grouped)} directories ═══[/bold cyan]")
+    console.print()
+    console.print("╭" + "─" * 60 + "╮", style="bold magenta")
+    console.print("│" + f"  🔮 [bold white]Processing {len(grouped)} directories[/bold white]".ljust(71) + "│", style="bold magenta")
+    console.print("╰" + "─" * 60 + "╯", style="bold magenta")
+    console.print()
     
     # Ask if user wants to commit all or select specific directories
     style = get_style({
-        "question": "#00afaf bold",
-        "questionmark": "#00afaf bold",
-        "pointer": "#00afaf",
-        "instruction": "#808080",
-        "answer": "#00afaf bold",
-        "checkbox": "#00afaf"
+        "question": "#00d7ff bold",
+        "questionmark": "#00d7ff bold",
+        "pointer": "#00d7ff bold",
+        "instruction": "#7f7f7f",
+        "answer": "#00d7ff bold",
+        "checkbox": "#00d7ff bold"
     }, style_override=False)
     
     if len(grouped) > 1:
@@ -289,28 +335,31 @@ def process_per_directory_commits(console, staged, flags):
         selected_directories = list(grouped.keys())
     
     if not selected_directories:
-        console.print("\n[yellow]No directories selected[/yellow]")
+        console.print("\n[bold yellow]⚠️  No directories selected[/bold yellow]\n")
         return
     
     # Process each selected directory
     for idx, directory in enumerate(selected_directories, 1):
         files = grouped[directory]
-        console.print(f"\n[cyan]{'═' * 50}[/cyan]")
-        console.print(f"[bold cyan]▸[/bold cyan] [bold][{idx}/{len(selected_directories)}] {directory}[/bold]")
-        console.print(f"[dim]{'─' * 50}[/dim]")
+        console.print()
+        console.print("┌" + "─" * 60 + "┐", style="bold cyan")
+        console.print("│" + f"  📂 [{idx}/{len(selected_directories)}] [bold white]{directory}[/bold white]".ljust(69) + "│", style="bold cyan")
+        console.print("└" + "─" * 60 + "┘", style="bold cyan")
+        console.print()
         
         for file in files:
-            console.print(f"  [cyan]•[/cyan] {file}")
+            console.print(f"  [cyan]▸[/cyan] [white]{file}[/white]")
         
         # Get diff for this directory's files
         with console.status(
-            f"→ Analyzing {directory}...",
+            f"[magenta]🤖 Analyzing {directory}...[/magenta]",
             spinner="dots",
+            spinner_style="magenta"
         ):
             diff = get_diff_for_files(files, flags["excludeFiles"])
             
             if not diff:
-                console.print(f"[yellow]No diff for {directory}, skipping[/yellow]")
+                console.print(f"\n[bold yellow]⚠️  No diff for {directory}, skipping[/bold yellow]\n")
                 continue
             
             # Suppress stderr during AI call to hide ALTS warnings
@@ -329,7 +378,7 @@ def process_per_directory_commits(console, staged, flags):
                 commit_message = commit_message.split("|")
             
             if not commit_message:
-                console.print(f"[yellow]No commit message generated for {directory}, skipping[/yellow]")
+                console.print(f"\n[bold yellow]⚠️  No commit message generated for {directory}, skipping[/bold yellow]\n")
                 continue
         
         # Prompt for commit message selection
@@ -338,9 +387,9 @@ def process_per_directory_commits(console, staged, flags):
         if selected_commit:
             # Commit only the files in this directory
             subprocess.run(["git", "commit", "-m", selected_commit, *flags["rawArgv"], "--"] + files)
-            console.print(f"\n[bold green]✓[/bold green] [green]Committed {directory}[/green]")
+            console.print(f"\n[bold green]✅ Committed {directory}[/bold green]")
         else:
-            console.print(f"\n[yellow]⊘ Skipped {directory}[/yellow]")
+            console.print(f"\n[bold yellow]⊘ Skipped {directory}[/bold yellow]")
 
 
 if __name__ == "__main__":
