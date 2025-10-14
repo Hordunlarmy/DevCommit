@@ -8,6 +8,7 @@ class CommitFlag(TypedDict):
     excludeFiles: List[str]
     stageAll: bool
     commitType: Optional[str]
+    directory: bool
     rawArgv: List[str]
 
 
@@ -38,6 +39,10 @@ def parse_arguments() -> CommitFlag:
         "--commitType", "-t", type=str, default=None, help="Type of commit"
     )
     parser.add_argument(
+        "--directory", "-d", action="store_true", 
+        help="Generate separate commits per root directory"
+    )
+    parser.add_argument(
         "rawArgv", nargs="*", help="Additional arguments for git commit"
     )
 
@@ -48,5 +53,6 @@ def parse_arguments() -> CommitFlag:
         excludeFiles=args.excludeFiles,
         stageAll=args.stageAll,
         commitType=args.commitType,
+        directory=args.directory,
         rawArgv=args.rawArgv,
     )

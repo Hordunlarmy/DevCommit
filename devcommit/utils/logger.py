@@ -1,19 +1,23 @@
 import logging
 import os
 
-from decouple import Config, RepositoryEnv
+from decouple import Config, RepositoryEnv, AutoConfig
 
+# Determine config file path
 if "VIRTUAL_ENV" in os.environ:
     config_path = os.path.join(os.environ["VIRTUAL_ENV"], "config", ".dcommit")
 else:
     config_path = os.path.expanduser("~/.dcommit")
 
+# Create config with priority: .dcommit file > environment variables > defaults
 if os.path.isfile(config_path):
+    # Use file-based config with environment variable fallback
     config = Config(RepositoryEnv(config_path))
     print("Configuration loaded from:", config_path)
 else:
-    config = None
-    print("No .dcommit configuration file found; proceeding with defaults.")
+    # Use environment variables only
+    config = AutoConfig()
+    print("Using environment variables and defaults (no .dcommit file found)")
 
 
 class Logger:
