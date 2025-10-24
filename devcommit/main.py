@@ -218,6 +218,7 @@ def prompt_commit_message(console, commit_message):
     
     choices = [
         *numbered_choices,
+        {"name": "  ✏️  [Enter custom message]", "value": "custom"},
         {"name": "  ❌ [Cancel]", "value": "cancel"}
     ]
     
@@ -234,7 +235,38 @@ def prompt_commit_message(console, commit_message):
     if action == "cancel":
         console.print("\n[bold yellow]⚠️  Commit cancelled[/bold yellow]\n")
         return None
+    elif action == "custom":
+        return prompt_custom_message(console)
     return action
+
+
+def prompt_custom_message(console):
+    """Prompt user to enter a custom commit message."""
+    console.print()
+    console.print("[bold cyan]✏️  Enter your custom commit message:[/bold cyan]")
+    console.print()
+    
+    style = get_style({
+        "question": "#00d7ff bold",
+        "questionmark": "#00d7ff bold",
+        "pointer": "#00d7ff bold",
+        "instruction": "#7f7f7f",
+        "answer": "#00d7ff bold"
+    }, style_override=False)
+    
+    custom_message = inquirer.text(
+        message="Commit message:",
+        style=style,
+        qmark="❯",
+        validate=lambda result: len(result.strip()) > 0,
+        filter=lambda result: result.strip()
+    ).execute()
+    
+    if not custom_message:
+        console.print("\n[bold yellow]⚠️  No message entered, commit cancelled[/bold yellow]\n")
+        return None
+    
+    return custom_message
 
 
 def commit_changes(console, commit, raw_argv):
