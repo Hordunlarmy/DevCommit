@@ -61,7 +61,7 @@ A command-line AI tool for autocommits.
    LOCALE = en
    MAX_NO = 1
    COMMIT_TYPE = conventional
-   MODEL_NAME = gemini-1.5-flash
+   MODEL_NAME = gemini-2.5-flash
    COMMIT_MODE = auto
    EOF
    ```
@@ -74,7 +74,7 @@ A command-line AI tool for autocommits.
    LOCALE = en
    MAX_NO = 1
    COMMIT_TYPE = conventional
-   MODEL_NAME = gemini-1.5-flash
+   MODEL_NAME = gemini-2.0-flash-exp
    COMMIT_MODE = auto
    EOF
    ```
@@ -209,7 +209,7 @@ All configuration can be set via **environment variables** or **`.dcommit` file*
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `GEMINI_API_KEY` | Google Gemini API key | - |
-| `GEMINI_MODEL` | Model name | `gemini-1.5-flash` |
+| `GEMINI_MODEL` | Model name | `gemini-2.0-flash-exp` |
 
 **OpenAI:**
 | Variable | Description | Default |
