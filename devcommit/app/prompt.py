@@ -46,10 +46,13 @@ commit_types: Dict[CommitType, str] = {
 
 def specify_commit_format(commit_type: CommitType) -> str:
     """Specify the commit format for the given commit type"""
+    
+    # Map "normal" to empty string format
+    format_key = "" if commit_type == "normal" else commit_type
 
     return (
         f"The output response must be in format:\n"
-        f"{commit_type_formats[commit_type]}"
+        f"{commit_type_formats[format_key]}"
     )
 
 

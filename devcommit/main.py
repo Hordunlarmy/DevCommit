@@ -54,7 +54,7 @@ def main(flags: CommitFlag = None):
         if provider == "ollama":
             model = config("OLLAMA_MODEL", default="llama3")
         elif provider == "gemini":
-            model = config("GEMINI_MODEL", default=None) or config("MODEL_NAME", default="gemini-1.5-flash")
+            model = config("GEMINI_MODEL", default=None) or config("MODEL_NAME", default="gemini-2.0-flash-exp")
         elif provider == "openai":
             model = config("OPENAI_MODEL", default="gpt-4o-mini")
         elif provider == "groq":
@@ -218,8 +218,8 @@ def prompt_commit_message(console, commit_message):
     
     choices = [
         *numbered_choices,
-        {"name": "  ✏️  [Enter custom message]", "value": "custom"},
-        {"name": "  ❌ [Cancel]", "value": "cancel"}
+        {"name": "  ✏️  Enter custom message", "value": "custom"},
+        {"name": "  ❌ Cancel", "value": "cancel"}
     ]
     
     action = inquirer.fuzzy(

@@ -61,7 +61,7 @@ def generateCommitMessage(diff: str) -> str:
         # Load Configuration Values
         max_no = config("MAX_NO", default=1, cast=int)
         locale = config("LOCALE", default="en-US")
-        commit_type = config("COMMIT_TYPE", default="general")
+        commit_type = config("COMMIT_TYPE", default="normal")
         max_tokens = config("MAX_TOKENS", default=8192, cast=int)
         
         # Generate prompt

@@ -47,7 +47,7 @@ class AIProvider(ABC):
 class GeminiProvider(AIProvider):
     """Google Gemini AI provider"""
     
-    def __init__(self, api_key: str, model: str = "gemini-1.5-flash"):
+    def __init__(self, api_key: str, model: str = "gemini-2.0-flash-exp"):
         if not genai:
             raise ImportError("google-generativeai not installed. Run: pip install google-generativeai")
         
@@ -235,7 +235,7 @@ def get_ai_provider(config) -> AIProvider:
         if not api_key:
             raise ValueError("GEMINI_API_KEY not set")
         # Support legacy MODEL_NAME for backward compatibility
-        model = config("GEMINI_MODEL", default=None) or config("MODEL_NAME", default="gemini-1.5-flash")
+        model = config("GEMINI_MODEL", default=None) or config("MODEL_NAME", default="gemini-2.0-flash-exp")
         return GeminiProvider(api_key, model)
     
     elif provider_name == "openai":
