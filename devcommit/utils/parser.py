@@ -10,6 +10,7 @@ class CommitFlag(TypedDict):
     commitType: Optional[str]
     directory: bool
     files: List[str]
+    push: bool
     rawArgv: List[str]
 
 
@@ -45,7 +46,11 @@ def parse_arguments() -> CommitFlag:
     )
     parser.add_argument(
         "--files", "-f", nargs="*", default=[],
-        help="Specific files or folders to stage, commit, and push (can specify multiple)"
+        help="Specific files or folders to stage and commit (can specify multiple)"
+    )
+    parser.add_argument(
+        "--push", "-p", action="store_true",
+        help="Push commits to remote after committing"
     )
     parser.add_argument(
         "rawArgv", nargs="*", help="Additional arguments for git commit"
@@ -60,5 +65,6 @@ def parse_arguments() -> CommitFlag:
         commitType=args.commitType,
         directory=args.directory,
         files=args.files or [],
+        push=args.push,
         rawArgv=args.rawArgv,
     )
