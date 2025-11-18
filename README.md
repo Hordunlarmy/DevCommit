@@ -16,24 +16,27 @@ A command-line AI tool for autocommits.
 
 ## Installation
 
-1. **Install DevCommit**  
-   
+1. **Install DevCommit**
+
    **Option 1: Using pip (local installation)**
+
    ```bash
    pip install devcommit
    ```
-   
+
    **Option 2: Using pipx (global installation, recommended)**
+
    ```bash
    # Install pipx if you don't have it
    python3 -m pip install --user pipx
    python3 -m pipx ensurepath
-   
+
    # Install DevCommit globally
    pipx install devcommit
    ```
+
    > **💡 Why pipx?** pipx installs CLI tools in isolated environments, preventing dependency conflicts while making them globally available.
-   
+
    **All AI providers are included by default!** ✅ Gemini, OpenAI, Groq, Anthropic, Ollama, and Custom API support.
 
 2. **Set Up Configuration (Required: API Key)**  
@@ -42,19 +45,21 @@ A command-line AI tool for autocommits.
    **Priority Order:** `.dcommit` file → Environment Variables → Defaults
 
    ### Option 1: Environment Variables (Quickest)
+
    ```bash
    # Using Gemini (default)
    export GEMINI_API_KEY='your-api-key-here'
-   
+
    # Or using Groq (recommended for free tier)
    export AI_PROVIDER='groq'
    export GROQ_API_KEY='your-groq-key'
-   
+
    # Add to ~/.bashrc or ~/.zshrc for persistence
    echo "export GEMINI_API_KEY='your-key'" >> ~/.bashrc
    ```
 
    ### Option 2: .dcommit File (Home Directory)
+
    ```bash
    cat > ~/.dcommit << 'EOF'
    GEMINI_API_KEY = your-api-key-here
@@ -67,6 +72,7 @@ A command-line AI tool for autocommits.
    ```
 
    ### Option 3: .dcommit File (Virtual Environment)
+
    ```bash
    mkdir -p $VIRTUAL_ENV/config
    cat > $VIRTUAL_ENV/config/.dcommit << 'EOF'
@@ -92,6 +98,7 @@ devcommit
 ### Basic Usage
 
 - **Stage all changes and commit:**
+
   ```bash
   devcommit --stageAll
   ```
@@ -118,6 +125,7 @@ You can set your preferred commit mode in the `.dcommit` configuration file usin
 #### Command-Line Usage
 
 - **Interactive mode (auto):** When you have changes in multiple directories, DevCommit will automatically ask if you want to:
+
   - Create one commit for all changes (global commit)
   - Create separate commits per directory
 
@@ -129,6 +137,7 @@ You can set your preferred commit mode in the `.dcommit` configuration file usin
   ```
 
 When using directory-based commits, you can:
+
 1. Select which directories to commit (use Space to select, Enter to confirm)
 2. For each selected directory, review and choose a commit message
 3. Each directory gets its own commit with AI-generated messages based on its changes
@@ -138,6 +147,7 @@ When using directory-based commits, you can:
 DevCommit allows you to stage, commit, and push specific files or folders in one command. This is useful when you want to push only certain changes without affecting other staged files.
 
 **Usage:**
+
 ```bash
 # Push specific files
 devcommit --files file1.py file2.py
@@ -153,6 +163,7 @@ devcommit -f file1.py file2.py
 ```
 
 When using `--files` or `-f`:
+
 - Only the specified files/folders are staged
 - AI generates commit messages based on changes in those files
 - Commits are automatically pushed to the remote repository
@@ -193,18 +204,19 @@ devcommit --files src/ file1.py tests/ config.json
 
 DevCommit now supports **multiple AI providers**! Choose from:
 
-| Provider | Free Tier | Speed | Quality | Get API Key |
-|----------|-----------|-------|---------|-------------|
-| 🆓 **Gemini** | 15 req/min, 1M/day | Fast | Good | [Get Key](https://aistudio.google.com/app/apikey) |
-| ⚡ **Groq** | Very generous | **Fastest** | Good | [Get Key](https://console.groq.com/keys) |
-| 🤖 **OpenAI** | $5 trial | Medium | **Best** | [Get Key](https://platform.openai.com/api-keys) |
-| 🧠 **Anthropic** | Limited trial | Medium | Excellent | [Get Key](https://console.anthropic.com/) |
-| 🏠 **Ollama** | **Unlimited** | Medium | Good | [Install](https://ollama.ai/) |
-| 🔧 **Custom** | Varies | Varies | Varies | Your server |
+| Provider         | Free Tier          | Speed       | Quality   | Get API Key                                       |
+| ---------------- | ------------------ | ----------- | --------- | ------------------------------------------------- |
+| 🆓 **Gemini**    | 15 req/min, 1M/day | Fast        | Good      | [Get Key](https://aistudio.google.com/app/apikey) |
+| ⚡ **Groq**      | Very generous      | **Fastest** | Good      | [Get Key](https://console.groq.com/keys)          |
+| 🤖 **OpenAI**    | $5 trial           | Medium      | **Best**  | [Get Key](https://platform.openai.com/api-keys)   |
+| 🧠 **Anthropic** | Limited trial      | Medium      | Excellent | [Get Key](https://console.anthropic.com/)         |
+| 🏠 **Ollama**    | **Unlimited**      | Medium      | Good      | [Install](https://ollama.ai/)                     |
+| 🔧 **Custom**    | Varies             | Varies      | Varies    | Your server                                       |
 
 ### Quick Setup Examples
 
 **Using Groq (Recommended for free tier):**
+
 ```bash
 export AI_PROVIDER=groq
 export GROQ_API_KEY='your-groq-api-key'
@@ -212,6 +224,7 @@ devcommit
 ```
 
 **Using Ollama (Local, no API key needed):**
+
 ```bash
 # Install Ollama: https://ollama.ai/
 ollama pull llama3
@@ -220,6 +233,7 @@ devcommit
 ```
 
 **Using Custom API:**
+
 ```bash
 export AI_PROVIDER=custom
 export CUSTOM_API_URL='http://localhost:8000/v1'
@@ -234,8 +248,8 @@ All configuration can be set via **environment variables** or **`.dcommit` file*
 
 ### AI Provider Settings
 
-| Variable | Description | Default | Options |
-|----------|-------------|---------|---------|
+| Variable      | Description             | Default  | Options                                                     |
+| ------------- | ----------------------- | -------- | ----------------------------------------------------------- |
 | `AI_PROVIDER` | Which AI service to use | `gemini` | `gemini`, `openai`, `groq`, `anthropic`, `ollama`, `custom` |
 
 ### Provider-Specific Settings
@@ -279,21 +293,23 @@ All configuration can be set via **environment variables** or **`.dcommit` file*
 
 ### General Settings
 
-| Variable | Description | Default | Options |
-|----------|-------------|---------|---------|
-| `LOCALE` | Language for commit messages | `en-US` | Any locale code (e.g., `en`, `es`, `fr`) |
-| `MAX_NO` | Number of commit message suggestions | `1` | Any positive integer |
-| `COMMIT_TYPE` | Style of commit messages | `general` | `general`, `conventional`, etc. |
-| `COMMIT_MODE` | Default commit strategy | `auto` | `auto`, `directory`, `global` |
-| `EXCLUDE_FILES` | Files to exclude from diff | `package-lock.json, pnpm-lock.yaml, yarn.lock, *.lock` | Comma-separated file patterns |
-| `MAX_TOKENS` | Maximum tokens for AI response | `8192` | Any positive integer |
+| Variable        | Description                          | Default                                                | Options                                  |
+| --------------- | ------------------------------------ | ------------------------------------------------------ | ---------------------------------------- |
+| `LOCALE`        | Language for commit messages         | `en-US`                                                | Any locale code (e.g., `en`, `es`, `fr`) |
+| `MAX_NO`        | Number of commit message suggestions | `1`                                                    | Any positive integer                     |
+| `COMMIT_TYPE`   | Style of commit messages             | `general`                                              | `general`, `conventional`, etc.          |
+| `COMMIT_MODE`   | Default commit strategy              | `auto`                                                 | `auto`, `directory`, `global`            |
+| `EXCLUDE_FILES` | Files to exclude from diff           | `package-lock.json, pnpm-lock.yaml, yarn.lock, *.lock` | Comma-separated file patterns            |
+| `MAX_TOKENS`    | Maximum tokens for AI response       | `8192`                                                 | Any positive integer                     |
 
 ### Configuration Priority
+
 1. **`.dcommit` file** (highest priority)
 2. **Environment variables**
 3. **Built-in defaults** (lowest priority)
 
 ### Using Environment Variables
+
 ```bash
 # Basic setup with Gemini (default)
 export GEMINI_API_KEY='your-api-key-here'
@@ -308,6 +324,7 @@ export GROQ_API_KEY='your-groq-key'
 ```
 
 ### Using .dcommit File
+
 See `.dcommit.example` for a complete configuration template with all providers.
 
 **Note:** The `.dcommit` file is **optional**. DevCommit will work with just environment variables!
