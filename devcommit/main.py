@@ -380,11 +380,26 @@ def push_changes(console):
     console.print("[dim]Note: You may be prompted for authentication[/dim]\n")
     
     try:
-        push_to_remote()
-        console.print("\n[bold green]✅ Pushed to remote successfully![/bold green]")
-    except KnownError as e:
-        console.print(f"\n[bold red]❌ Push failed:[/bold red] [red]{e}[/red]")
-        raise
+        # Run push with stdin/stdout/stderr connected to terminal
+        # This allows interactive prompts (authentication) to work properly
+        result = subprocess.run(
+            ['git', 'push'],
+            check=False,  # Don't raise on error, we'll check return code
+            stdin=None,   # Inherit stdin for interactive prompts
+            stdout=None,  # Don't capture stdout - let it show in terminal
+            stderr=None   # Don't capture stderr - let it show in terminal
+        )
+        
+        if result.returncode == 0:
+            console.print("\n[bold green]✅ Pushed to remote successfully![/bold green]")
+        else:
+            raise KnownError("Push failed. Please check the output above for details.")
+    except FileNotFoundError:
+        raise KnownError("Git command not found. Please ensure git is installed.")
+    except Exception as e:
+        if isinstance(e, KnownError):
+            raise
+        raise KnownError(f"Push failed: {str(e)}")
 
 
 def prompt_commit_strategy(console, grouped):
