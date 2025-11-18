@@ -168,3 +168,159 @@ def get_diff_for_files(files: List[str], exclude_files: Optional[List[str]] = No
         return diff.stdout.strip()
     except subprocess.CalledProcessError:
         return ""
+
+
+def get_files_from_paths(paths: List[str]) -> List[str]:
+    """
+    Gets all files from given paths (handles both files and directories).
+    Returns a list of file paths relative to the repository root.
+    """
+    repo_root = assert_git_repo()
+    all_files = []
+    
+    for path in paths:
+        # Normalize path
+        normalized_path = os.path.normpath(path)
+        full_path = os.path.join(repo_root, normalized_path) if not os.path.isabs(path) else path
+        
+        if not os.path.exists(full_path):
+            raise KnownError(f"Path does not exist: {path}")
+        
+        if os.path.isfile(full_path):
+            # It's a file, get relative path
+            rel_path = os.path.relpath(full_path, repo_root)
+            all_files.append(rel_path)
+        elif os.path.isdir(full_path):
+            # It's a directory, get all files in it
+            try:
+                result = subprocess.run(
+                    ['git', 'ls-files', '--', normalized_path],
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    cwd=repo_root
+                )
+                files_in_dir = [f.strip() for f in result.stdout.strip().split('\n') if f.strip()]
+                all_files.extend(files_in_dir)
+            except subprocess.CalledProcessError:
+                # If git ls-files fails, try to find files manually
+                for root, dirs, files in os.walk(full_path):
+                    # Skip .git directories
+                    if '.git' in dirs:
+                        dirs.remove('.git')
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        rel_path = os.path.relpath(file_path, repo_root)
+                        all_files.append(rel_path)
+    
+    # Remove duplicates and return
+    return list(set(all_files))
+
+
+def stage_files(files: List[str]) -> None:
+    """
+    Stages specific files.
+    """
+    if not files:
+        return
+    
+    try:
+        subprocess.run(
+            ['git', 'add', '--'] + files,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+    except subprocess.CalledProcessError as e:
+        raise KnownError(f"Failed to stage files: {e.stderr}")
+
+
+def get_current_branch() -> str:
+    """
+    Gets the current git branch name.
+    """
+    try:
+        result = subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        raise KnownError("Failed to get current branch name")
+
+
+def has_commits_to_push(branch: Optional[str] = None, remote: str = "origin") -> bool:
+    """
+    Checks if there are commits ahead of the remote that need to be pushed.
+    Returns True if there are commits to push, False otherwise.
+    """
+    if branch is None:
+        branch = get_current_branch()
+    
+    try:
+        # Check if remote tracking branch exists
+        result = subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', f'{branch}@{{upstream}}'],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        upstream = result.stdout.strip()
+    except subprocess.CalledProcessError:
+        # No upstream branch, assume we need to push
+        return True
+    
+    try:
+        # Check if local branch is ahead of remote
+        result = subprocess.run(
+            ['git', 'rev-list', '--count', f'{upstream}..{branch}'],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        ahead_count = int(result.stdout.strip())
+        return ahead_count > 0
+    except (subprocess.CalledProcessError, ValueError):
+        # If we can't determine, assume we need to push
+        return True
+
+
+def push_to_remote(branch: Optional[str] = None, remote: str = "origin") -> None:
+    """
+    Pushes the current branch to the remote repository.
+    """
+    if branch is None:
+        branch = get_current_branch()
+    
+    try:
+        # Check if remote exists
+        result = subprocess.run(
+            ['git', 'remote', 'get-url', remote],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+    except subprocess.CalledProcessError:
+        raise KnownError(f"Remote '{remote}' does not exist. Please add a remote first.")
+    
+    # Check if there are commits to push
+    if not has_commits_to_push(branch, remote):
+        return  # Nothing to push
+    
+    try:
+        # Don't capture stdout/stderr to allow interactive prompts (e.g., for authentication)
+        # This allows the user to see what's happening and enter credentials if needed
+        subprocess.run(
+            ['git', 'push', remote, branch],
+            check=True
+        )
+    except subprocess.CalledProcessError as e:
+        raise KnownError(f"Failed to push to remote. Please check your authentication and try again.")
