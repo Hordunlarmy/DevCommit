@@ -133,6 +133,31 @@ When using directory-based commits, you can:
 2. For each selected directory, review and choose a commit message
 3. Each directory gets its own commit with AI-generated messages based on its changes
 
+### Push Specific Files or Folders
+
+DevCommit allows you to stage, commit, and push specific files or folders in one command. This is useful when you want to push only certain changes without affecting other staged files.
+
+**Usage:**
+```bash
+# Push specific files
+devcommit --files file1.py file2.py
+
+# Push specific folders
+devcommit --files src/ tests/
+
+# Push multiple files and folders at once
+devcommit --files src/ file1.py tests/ config.json
+
+# Short form
+devcommit -f file1.py file2.py
+```
+
+When using `--files` or `-f`:
+- Only the specified files/folders are staged
+- AI generates commit messages based on changes in those files
+- Commits are automatically pushed to the remote repository
+- Works with both individual files and entire directories
+
 ### Additional Options
 
 - `--excludeFiles` or `-e`: Exclude specific files from the diff
@@ -140,6 +165,7 @@ When using directory-based commits, you can:
 - `--commitType` or `-t`: Specify the type of commit (e.g., conventional)
 - `--stageAll` or `-s`: Stage all changes before committing
 - `--directory` or `-d`: Force directory-based commits
+- `--files` or `-f`: Stage, commit, and push specific files or folders (can specify multiple)
 
 ### Examples
 
@@ -152,6 +178,15 @@ devcommit --commitType conventional
 
 # Exclude lock files
 devcommit --excludeFiles package-lock.json yarn.lock
+
+# Stage, commit, and push specific files
+devcommit --files file1.py file2.py
+
+# Stage, commit, and push specific folders
+devcommit --files src/ tests/
+
+# Stage, commit, and push multiple files and folders at once
+devcommit --files src/ file1.py tests/ config.json
 ```
 
 ## AI Provider Support
