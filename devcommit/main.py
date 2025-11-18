@@ -13,8 +13,8 @@ from devcommit.app.gemini_ai import generateCommitMessage
 from devcommit.utils.git import (KnownError, assert_git_repo,
                                  get_detected_message, get_diff_for_files,
                                  get_files_from_paths, get_staged_diff,
-                                 group_files_by_directory, push_to_remote,
-                                 stage_files)
+                                 group_files_by_directory, has_commits_to_push,
+                                 push_to_remote, stage_files)
 from devcommit.utils.logger import Logger, config
 from devcommit.utils.parser import CommitFlag, parse_arguments
 
@@ -322,17 +322,24 @@ def commit_changes(console, commit, raw_argv):
 
 def push_changes(console):
     """Push commits to remote repository."""
-    with console.status(
-        "[cyan]🚀 Pushing to remote...[/cyan]",
-        spinner="dots",
-        spinner_style="cyan"
-    ):
-        try:
-            push_to_remote()
-            console.print("\n[bold green]✅ Pushed to remote successfully![/bold green]")
-        except KnownError as e:
-            console.print(f"\n[bold red]❌ Push failed:[/bold red] [red]{e}[/red]")
-            raise
+    # Check if there are commits to push first
+    try:
+        if not has_commits_to_push():
+            console.print("\n[bold yellow]ℹ️  No commits to push (already up to date)[/bold yellow]\n")
+            return
+    except KnownError:
+        # If we can't determine, try to push anyway
+        pass
+    
+    console.print("\n[cyan]🚀 Pushing to remote...[/cyan]")
+    console.print("[dim]Note: You may be prompted for authentication[/dim]\n")
+    
+    try:
+        push_to_remote()
+        console.print("\n[bold green]✅ Pushed to remote successfully![/bold green]")
+    except KnownError as e:
+        console.print(f"\n[bold red]❌ Push failed:[/bold red] [red]{e}[/red]")
+        raise
 
 
 def prompt_commit_strategy(console, grouped):
