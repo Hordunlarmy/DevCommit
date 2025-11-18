@@ -12,7 +12,9 @@ from rich.console import Console
 from devcommit.app.gemini_ai import generateCommitMessage
 from devcommit.utils.git import (KnownError, assert_git_repo,
                                  get_detected_message, get_diff_for_files,
-                                 get_staged_diff, group_files_by_directory)
+                                 get_files_from_paths, get_staged_diff,
+                                 group_files_by_directory, push_to_remote,
+                                 stage_files)
 from devcommit.utils.logger import Logger, config
 from devcommit.utils.parser import CommitFlag, parse_arguments
 
@@ -67,10 +69,45 @@ def main(flags: CommitFlag = None):
         console.print(f"[dim]Provider:[/dim] [bold magenta]{provider}[/bold magenta] [dim]│[/dim] [dim]Model:[/dim] [bold magenta]{model}[/bold magenta]")
         console.print()
 
-        if flags["stageAll"]:
+        # Handle files: stage specific files/folders
+        push_files_list = []
+        if flags["files"]:
+            console.print("[bold cyan]📦 Staging specific files/folders...[/bold cyan]")
+            try:
+                push_files_list = get_files_from_paths(flags["files"])
+                if not push_files_list:
+                    raise KnownError("No files found in the specified paths")
+                
+                console.print(f"[dim]Found {len(push_files_list)} file(s) to stage[/dim]")
+                for file in push_files_list:
+                    console.print(f"  [cyan]▸[/cyan] [white]{file}[/white]")
+                
+                stage_files(push_files_list)
+                console.print("[bold green]✅ Files staged successfully[/bold green]\n")
+            except KnownError as e:
+                raise e
+            except Exception as e:
+                raise KnownError(f"Failed to stage files: {str(e)}")
+        elif flags["stageAll"]:
             stage_changes(console)
 
-        staged = detect_staged_files(console, flags["excludeFiles"])
+        # If files was used, only work with those files
+        if push_files_list:
+            # Create a staged dict with only the specified files
+            staged = {
+                "files": push_files_list,
+                "diff": get_diff_for_files(push_files_list, flags["excludeFiles"])
+            }
+            if not staged["diff"]:
+                raise KnownError("No changes found in the specified files/folders")
+            
+            console.print(f"\n[bold green]✅ {get_detected_message(staged['files'])}[/bold green]")
+            console.print("[dim]" + "─" * 60 + "[/dim]")
+            for file in staged["files"]:
+                console.print(f"  [cyan]▸[/cyan] [white]{file}[/white]")
+            console.print("[dim]" + "─" * 60 + "[/dim]")
+        else:
+            staged = detect_staged_files(console, flags["excludeFiles"])
         
         # Determine commit strategy
         # Priority: CLI flag > config (file or env) > interactive prompt
@@ -91,19 +128,28 @@ def main(flags: CommitFlag = None):
             if len(grouped) > 1:
                 use_per_directory = prompt_commit_strategy(console, grouped)
         
+        # Track if any commits were made
+        commit_made = False
         if use_per_directory:
-            process_per_directory_commits(console, staged, flags)
+            commit_made = process_per_directory_commits(console, staged, flags)
         else:
-            process_global_commit(console, flags)
+            commit_made = process_global_commit(console, flags)
         
-        # Print stylish completion message
-        console.print()
-        console.print("╭" + "─" * 60 + "╮", style="bold green")
-        console.print("│" + " " * 60 + "│", style="bold green")
-        console.print("│" + "     ✨ [bold white]All commits completed successfully![/bold white] ✨     ".ljust(68) + "│", style="bold green")
-        console.print("│" + " " * 60 + "│", style="bold green")
-        console.print("╰" + "─" * 60 + "╯", style="bold green")
-        console.print()
+        # Handle push if files flag was used and a commit was actually made
+        if flags["files"] and commit_made:
+            push_changes(console)
+        elif flags["files"] and not commit_made:
+            console.print("\n[bold yellow]⚠️  No commits were made, skipping push[/bold yellow]\n")
+        
+        # Print stylish completion message only if commits were made
+        if commit_made:
+            console.print()
+            console.print("╭" + "─" * 60 + "╮", style="bold green")
+            console.print("│" + " " * 60 + "│", style="bold green")
+            console.print("│" + "     ✨ [bold white]All commits completed successfully![/bold white] ✨     ".ljust(68) + "│", style="bold green")
+            console.print("│" + " " * 60 + "│", style="bold green")
+            console.print("╰" + "─" * 60 + "╯", style="bold green")
+            console.print()
 
     except KeyboardInterrupt:
         console.print("\n\n[bold yellow]⚠️  Operation cancelled by user[/bold yellow]\n")
@@ -274,6 +320,21 @@ def commit_changes(console, commit, raw_argv):
     console.print("\n[bold green]✅ Committed successfully![/bold green]")
 
 
+def push_changes(console):
+    """Push commits to remote repository."""
+    with console.status(
+        "[cyan]🚀 Pushing to remote...[/cyan]",
+        spinner="dots",
+        spinner_style="cyan"
+    ):
+        try:
+            push_to_remote()
+            console.print("\n[bold green]✅ Pushed to remote successfully![/bold green]")
+        except KnownError as e:
+            console.print(f"\n[bold red]❌ Push failed:[/bold red] [red]{e}[/red]")
+            raise
+
+
 def prompt_commit_strategy(console, grouped):
     """Prompt user to choose between global or directory-based commits."""
     console.print()
@@ -310,16 +371,21 @@ def prompt_commit_strategy(console, grouped):
 
 
 def process_global_commit(console, flags):
-    """Process a single global commit for all changes."""
+    """Process a single global commit for all changes.
+    Returns True if a commit was made, False otherwise."""
     commit_message = analyze_changes(console)
     selected_commit = prompt_commit_message(console, commit_message)
     if selected_commit:
         commit_changes(console, selected_commit, flags["rawArgv"])
+        return True
+    return False
 
 
 def process_per_directory_commits(console, staged, flags):
-    """Process separate commits for each directory."""
+    """Process separate commits for each directory.
+    Returns True if at least one commit was made, False otherwise."""
     grouped = group_files_by_directory(staged["files"])
+    commits_made = False
     
     console.print()
     console.print("╭" + "─" * 60 + "╮", style="bold magenta")
@@ -368,7 +434,7 @@ def process_per_directory_commits(console, staged, flags):
     
     if not selected_directories:
         console.print("\n[bold yellow]⚠️  No directories selected[/bold yellow]\n")
-        return
+        return False
     
     # Process each selected directory
     for idx, directory in enumerate(selected_directories, 1):
@@ -420,8 +486,11 @@ def process_per_directory_commits(console, staged, flags):
             # Commit only the files in this directory
             subprocess.run(["git", "commit", "-m", selected_commit, *flags["rawArgv"], "--"] + files)
             console.print(f"\n[bold green]✅ Committed {directory}[/bold green]")
+            commits_made = True
         else:
             console.print(f"\n[bold yellow]⊘ Skipped {directory}[/bold yellow]")
+    
+    return commits_made
 
 
 if __name__ == "__main__":
