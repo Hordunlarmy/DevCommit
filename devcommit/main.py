@@ -69,43 +69,88 @@ def main(flags: CommitFlag = None):
         console.print(f"[dim]Provider:[/dim] [bold magenta]{provider}[/bold magenta] [dim]│[/dim] [dim]Model:[/dim] [bold magenta]{model}[/bold magenta]")
         console.print()
 
-        # Handle files: stage specific files/folders
+        # Handle staging
         push_files_list = []
-        if flags["files"]:
-            console.print("[bold cyan]📦 Staging specific files/folders...[/bold cyan]")
+        if flags["files"] and len(flags["files"]) > 0:
+            
+            # Get the list of files from paths first
             try:
                 push_files_list = get_files_from_paths(flags["files"])
                 if not push_files_list:
                     raise KnownError("No files found in the specified paths")
-                
+            except KnownError as e:
+                raise e
+            except Exception as e:
+                raise KnownError(f"Failed to get files from paths: {str(e)}")
+        
+        if flags["stageAll"]:
+            if push_files_list:
+                # Stage specific files/folders only
+                console.print("[bold cyan]📦 Staging specific files/folders...[/bold cyan]")
                 console.print(f"[dim]Found {len(push_files_list)} file(s) to stage[/dim]")
                 for file in push_files_list:
                     console.print(f"  [cyan]▸[/cyan] [white]{file}[/white]")
                 
                 stage_files(push_files_list)
                 console.print("[bold green]✅ Files staged successfully[/bold green]\n")
-            except KnownError as e:
-                raise e
-            except Exception as e:
-                raise KnownError(f"Failed to stage files: {str(e)}")
-        elif flags["stageAll"]:
-            stage_changes(console)
+            else:
+                # Stage all changes
+                stage_changes(console)
+                console.print("[bold green]✅ All changes staged successfully[/bold green]\n")
 
-        # If files was used, only work with those files
-        if push_files_list:
-            # Create a staged dict with only the specified files
-            staged = {
-                "files": push_files_list,
-                "diff": get_diff_for_files(push_files_list, flags["excludeFiles"])
-            }
-            if not staged["diff"]:
-                raise KnownError("No changes found in the specified files/folders")
-            
-            console.print(f"\n[bold green]✅ {get_detected_message(staged['files'])}[/bold green]")
-            console.print("[dim]" + "─" * 60 + "[/dim]")
-            for file in staged["files"]:
-                console.print(f"  [cyan]▸[/cyan] [white]{file}[/white]")
-            console.print("[dim]" + "─" * 60 + "[/dim]")
+        # Get staged files
+        if push_files_list and len(push_files_list) > 0:
+            if flags["stageAll"]:
+                # If --files was used with --stageAll, we already staged those files
+                # Create a staged dict with only those files
+                staged = {
+                    "files": push_files_list,
+                    "diff": get_diff_for_files(push_files_list, flags["excludeFiles"])
+                }
+                if not staged["diff"]:
+                    raise KnownError("No changes found in the specified files/folders")
+                
+                console.print(f"\n[bold green]✅ {get_detected_message(staged['files'])}[/bold green]")
+                console.print("[dim]" + "─" * 60 + "[/dim]")
+                for file in staged["files"]:
+                    console.print(f"  [cyan]▸[/cyan] [white]{file}[/white]")
+                console.print("[dim]" + "─" * 60 + "[/dim]")
+            else:
+                # If --files was used without --stageAll, filter staged files to only those specified
+                # First, get all staged files (this will error if nothing is staged)
+                all_staged = get_staged_diff(flags["excludeFiles"])
+                if not all_staged:
+                    raise KnownError(
+                        "No staged changes found. Stage your changes manually, or "
+                        "automatically stage specific files with the `--stageAll --files` flag."
+                    )
+                
+                # Filter to only include files that match the specified paths
+                filtered_files = []
+                for staged_file in all_staged["files"]:
+                    # Check if this staged file is in our push_files_list
+                    if staged_file in push_files_list:
+                        filtered_files.append(staged_file)
+                
+                if not filtered_files:
+                    raise KnownError(
+                        f"None of the specified files/folders are staged. "
+                        f"Please stage them first with 'git add' or use '--stageAll --files'"
+                    )
+                
+                # Create a staged dict with only the filtered files
+                staged = {
+                    "files": filtered_files,
+                    "diff": get_diff_for_files(filtered_files, flags["excludeFiles"])
+                }
+                if not staged["diff"]:
+                    raise KnownError("No changes found in the specified files/folders")
+                
+                console.print(f"\n[bold green]✅ {get_detected_message(staged['files'])}[/bold green]")
+                console.print("[dim]" + "─" * 60 + "[/dim]")
+                for file in staged["files"]:
+                    console.print(f"  [cyan]▸[/cyan] [white]{file}[/white]")
+                console.print("[dim]" + "─" * 60 + "[/dim]")
         else:
             staged = detect_staged_files(console, flags["excludeFiles"])
         
@@ -135,10 +180,10 @@ def main(flags: CommitFlag = None):
         else:
             commit_made = process_global_commit(console, flags)
         
-        # Handle push if files flag was used and a commit was actually made
-        if flags["files"] and commit_made:
+        # Handle push if requested and a commit was actually made
+        if flags.get("push", False) and commit_made:
             push_changes(console)
-        elif flags["files"] and not commit_made:
+        elif flags.get("push", False) and not commit_made:
             console.print("\n[bold yellow]⚠️  No commits were made, skipping push[/bold yellow]\n")
         
         # Print stylish completion message only if commits were made
