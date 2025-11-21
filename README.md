@@ -171,6 +171,22 @@ When using `--files` or `-f`:
 - AI generates commit messages based on changes in those files
 - Works with both individual files and entire directories
 
+#### Commit Mode Behavior with `--files`
+
+The `--files` flag respects your `COMMIT_MODE` setting:
+
+- **`COMMIT_MODE=directory`** with `--files`:
+  - Each file gets its own separate commit, even if files are in the same directory
+  - Example: `devcommit -f src/test1.py src/test2.py` creates 2 separate commits
+
+- **`COMMIT_MODE=global`** with `--files`:
+  - All specified files are committed together in a single commit
+  - Example: `devcommit -f src/test1.py src/test2.py` creates 1 commit for both files
+
+- **`COMMIT_MODE=auto`** with `--files`:
+  - If files span multiple directories, prompts you to choose between one commit or separate commits
+  - If all files are in the same directory, creates one commit (unless directory mode is selected)
+
 ### Additional Options
 
 - `--excludeFiles` or `-e`: Exclude specific files from the diff
