@@ -71,7 +71,9 @@ def main(flags: CommitFlag = None):
 
         # Handle staging
         push_files_list = []
+        original_paths = []  # Keep track of original paths (files or directories) passed
         if flags["files"] and len(flags["files"]) > 0:
+            original_paths = flags["files"]
             
             # Get the list of files from paths first
             try:
@@ -82,7 +84,7 @@ def main(flags: CommitFlag = None):
                 raise e
             except Exception as e:
                 raise KnownError(f"Failed to get files from paths: {str(e)}")
-        
+
         if flags["stageAll"]:
             if push_files_list:
                 # Stage specific files/folders only
@@ -158,6 +160,9 @@ def main(flags: CommitFlag = None):
         # Priority: CLI flag > config (file or env) > interactive prompt
         use_per_directory = flags.get("directory", False)
         
+        # Special handling when --files is used: check if we should use per-file commits
+        is_files_mode = push_files_list and len(push_files_list) > 0
+        
         # If not explicitly set via CLI, check config (file or environment variable)
         if not use_per_directory:
             commit_mode = config("COMMIT_MODE", default="auto").lower()
@@ -168,19 +173,51 @@ def main(flags: CommitFlag = None):
             # If "auto" or not set, fall through to interactive prompt
         
         # If still not set (auto mode), check if there are multiple directories and prompt
-        # This works for both --files and regular staged files
         if not use_per_directory and config("COMMIT_MODE", default="auto").lower() == "auto":
-            grouped = group_files_by_directory(staged["files"])
-            if len(grouped) > 1:
-                use_per_directory = prompt_commit_strategy(console, grouped)
-            # If only one directory, use global commit (single commit for all files)
+            if is_files_mode:
+                # When --files is used with auto mode, always prompt
+                # Group files to show directory structure, but prompt for per-file vs global
+                grouped = group_files_by_directory(staged["files"])
+                console.print()
+                console.print("╭" + "─" * 60 + "╮", style="bold yellow")
+                console.print("│" + "  📂 [bold white]Files from multiple locations detected[/bold white]".ljust(70) + "│", style="bold yellow")
+                console.print("╰" + "─" * 60 + "╯", style="bold yellow")
+                console.print()
+                console.print(f"  [dim]Found {len(staged['files'])} file(s) to commit[/dim]")
+                console.print()
+                # Prompt for per-file vs global commit
+                use_per_directory = prompt_commit_strategy(console, grouped, is_files_mode=True)
+            else:
+                # Regular auto mode: check directories
+                grouped = group_files_by_directory(staged["files"])
+                if len(grouped) > 1:
+                    use_per_directory = prompt_commit_strategy(console, grouped, is_files_mode=False)
+            # If only one directory and not files mode, use global commit (single commit for all files)
         
         # Track if any commits were made
         commit_made = False
         if use_per_directory:
-            # When --files is used with directory mode, treat each file as separate
-            if push_files_list and len(push_files_list) > 0:
-                commit_made = process_per_file_commits(console, staged, flags)
+            # When --files is used with directory mode
+            if is_files_mode:
+                # Check if original paths were directories or individual files
+                # If directories were passed, group by those directories
+                # If individual files were passed, treat each file separately
+                has_directories = False
+                if original_paths:
+                    repo_root = assert_git_repo()
+                    for path in original_paths:
+                        normalized_path = os.path.normpath(path)
+                        full_path = os.path.join(repo_root, normalized_path) if not os.path.isabs(path) else path
+                        if os.path.isdir(full_path):
+                            has_directories = True
+                            break
+                
+                if has_directories:
+                    # Group files by the original directories passed
+                    commit_made = process_per_directory_commits_from_paths(console, staged, flags, original_paths)
+                else:
+                    # Individual files passed, treat each file separately
+                    commit_made = process_per_file_commits(console, staged, flags)
             else:
                 commit_made = process_per_directory_commits(console, staged, flags)
         else:
@@ -434,8 +471,14 @@ def push_changes(console):
         raise KnownError(f"Push failed: {str(e)}")
 
 
-def prompt_commit_strategy(console, grouped):
-    """Prompt user to choose between global or directory-based commits."""
+def prompt_commit_strategy(console, grouped, is_files_mode=False):
+    """Prompt user to choose between global or directory-based commits.
+    
+    Args:
+        console: Rich console for output
+        grouped: Dictionary of directories and their files
+        is_files_mode: If True, directory mode means per-file commits (when --files is used)
+    """
     console.print()
     console.print("╭" + "─" * 60 + "╮", style="bold yellow")
     console.print("│" + "  📂 [bold white]Multiple directories detected[/bold white]".ljust(70) + "│", style="bold yellow")
@@ -454,13 +497,23 @@ def prompt_commit_strategy(console, grouped):
         "answer": "#00d7ff bold"
     }, style_override=False)
     
+    if is_files_mode:
+        # When --files is used, directory mode means per-file commits
+        choices = [
+            {"name": "  🌐 One commit for all files", "value": False},
+            {"name": "  📄 Separate commit for each file", "value": True},
+        ]
+    else:
+        # Normal mode: directory mode means per-directory commits
+        choices = [
+            {"name": "  🌐 One commit for all changes", "value": False},
+            {"name": "  📁 Separate commits per directory", "value": True},
+        ]
+    
     strategy = inquirer.select(
         message="Commit strategy",
         style=style,
-        choices=[
-            {"name": "  🌐 One commit for all changes", "value": False},
-            {"name": "  📁 Separate commits per directory", "value": True},
-        ],
+        choices=choices,
         default=None,
         instruction="(Use arrow keys)",
         qmark="❯"
@@ -607,9 +660,25 @@ def process_per_file_commits(console, staged, flags):
     files = staged["files"]
     commits_made = False
     
+    # Filter out files with no diff before processing
+    files_with_changes = []
+    for file in files:
+        diff = get_diff_for_files([file], flags["excludeFiles"])
+        if diff:
+            files_with_changes.append(file)
+    
+    if not files_with_changes:
+        console.print("\n[bold yellow]⚠️  No files with changes to commit[/bold yellow]\n")
+        return False
+    
+    # If some files were filtered out, show a message
+    if len(files_with_changes) < len(files):
+        skipped_count = len(files) - len(files_with_changes)
+        console.print(f"\n[dim]Skipping {skipped_count} file(s) with no changes[/dim]\n")
+    
     console.print()
     console.print("╭" + "─" * 60 + "╮", style="bold magenta")
-    console.print("│" + f"  🔮 [bold white]Processing {len(files)} file(s)[/bold white]".ljust(71) + "│", style="bold magenta")
+    console.print("│" + f"  🔮 [bold white]Processing {len(files_with_changes)} file(s)[/bold white]".ljust(71) + "│", style="bold magenta")
     console.print("╰" + "─" * 60 + "╯", style="bold magenta")
     console.print()
     
@@ -623,7 +692,7 @@ def process_per_file_commits(console, staged, flags):
         "checkbox": "#00d7ff bold"
     }, style_override=False)
     
-    if len(files) > 1:
+    if len(files_with_changes) > 1:
         commit_all = inquirer.confirm(
             message="Commit all files?",
             style=style,
@@ -633,30 +702,30 @@ def process_per_file_commits(console, staged, flags):
         ).execute()
         
         if commit_all:
-            selected_files = files
+            selected_files = files_with_changes
         else:
             # Let user select which files to commit
             file_choices = [
                 {"name": file, "value": file}
-                for file in files
+                for file in files_with_changes
             ]
             
             selected_files = inquirer.checkbox(
                 message="Select files to commit",
                 style=style,
                 choices=file_choices,
-                default=files,
+                default=files_with_changes,
                 instruction="(Space to select, Enter to confirm)",
                 qmark="❯"
             ).execute()
     else:
-        selected_files = files
+        selected_files = files_with_changes
     
     if not selected_files:
         console.print("\n[bold yellow]⚠️  No files selected[/bold yellow]\n")
         return False
     
-    # Process each selected file
+    # Process each selected file (all should have changes since we filtered)
     for idx, file in enumerate(selected_files, 1):
         console.print()
         console.print("┌" + "─" * 60 + "┐", style="bold cyan")
@@ -664,7 +733,7 @@ def process_per_file_commits(console, staged, flags):
         console.print("└" + "─" * 60 + "┘", style="bold cyan")
         console.print()
         
-        # Get diff for this file
+        # Get diff for this file (should already have changes, but double-check)
         with console.status(
             f"[magenta]🤖 Analyzing {file}...[/magenta]",
             spinner="dots",
@@ -705,6 +774,106 @@ def process_per_file_commits(console, staged, flags):
             commits_made = True
         else:
             console.print(f"\n[bold yellow]⊘ Skipped {file}[/bold yellow]")
+    
+    return commits_made
+
+
+def process_per_directory_commits_from_paths(console, staged, flags, original_paths):
+    """Process separate commits for each directory/path when --files is used with directory mode.
+    Groups files by the original paths passed (directories or files).
+    Returns True if at least one commit was made, False otherwise."""
+    repo_root = assert_git_repo()
+    commits_made = False
+    
+    # Group files by the original paths they came from
+    path_to_files = {}
+    for path in original_paths:
+        normalized_path = os.path.normpath(path)
+        full_path = os.path.join(repo_root, normalized_path) if not os.path.isabs(path) else path
+        
+        if os.path.isdir(full_path):
+            # It's a directory - find all files that belong to this directory
+            dir_files = [f for f in staged["files"] if f.startswith(normalized_path + os.sep) or f == normalized_path]
+            if dir_files:
+                path_to_files[normalized_path] = dir_files
+        else:
+            # It's a file - add it directly
+            if normalized_path in staged["files"]:
+                path_to_files[normalized_path] = [normalized_path]
+    
+    if not path_to_files:
+        console.print("\n[bold yellow]⚠️  No files found for the specified paths[/bold yellow]\n")
+        return False
+    
+    # Filter out paths with no changes
+    paths_with_changes = {}
+    for path, files in path_to_files.items():
+        diff = get_diff_for_files(files, flags["excludeFiles"])
+        if diff:
+            paths_with_changes[path] = files
+    
+    if not paths_with_changes:
+        console.print("\n[bold yellow]⚠️  No paths with changes to commit[/bold yellow]\n")
+        return False
+    
+    console.print()
+    console.print("╭" + "─" * 60 + "╮", style="bold magenta")
+    console.print("│" + f"  🔮 [bold white]Processing {len(paths_with_changes)} path(s)[/bold white]".ljust(71) + "│", style="bold magenta")
+    console.print("╰" + "─" * 60 + "╯", style="bold magenta")
+    console.print()
+    
+    # Process each path
+    for idx, (path, files) in enumerate(paths_with_changes.items(), 1):
+        console.print()
+        console.print("┌" + "─" * 60 + "┐", style="bold cyan")
+        console.print("│" + f"  📂 [{idx}/{len(paths_with_changes)}] [bold white]{path}[/bold white]".ljust(69) + "│", style="bold cyan")
+        console.print("└" + "─" * 60 + "┘", style="bold cyan")
+        console.print()
+        
+        for file in files:
+            console.print(f"  [cyan]▸[/cyan] [white]{file}[/white]")
+        
+        # Get diff for this path's files
+        with console.status(
+            f"[magenta]🤖 Analyzing {path}...[/magenta]",
+            spinner="dots",
+            spinner_style="magenta"
+        ):
+            diff = get_diff_for_files(files, flags["excludeFiles"])
+            
+            if not diff:
+                console.print(f"\n[bold yellow]⚠️  No diff for {path}, skipping[/bold yellow]\n")
+                continue
+            
+            # Suppress stderr during AI call to hide ALTS warnings
+            import sys
+            _stderr = sys.stderr
+            _devnull = open(os.devnull, 'w')
+            sys.stderr = _devnull
+            
+            try:
+                commit_message = generateCommitMessage(diff)
+            finally:
+                sys.stderr = _stderr
+                _devnull.close()
+            
+            if isinstance(commit_message, str):
+                commit_message = commit_message.split("|")
+            
+            if not commit_message:
+                console.print(f"\n[bold yellow]⚠️  No commit message generated for {path}, skipping[/bold yellow]\n")
+                continue
+        
+        # Prompt for commit message selection
+        selected_commit = prompt_commit_message(console, commit_message)
+        
+        if selected_commit:
+            # Commit only the files for this path
+            subprocess.run(["git", "commit", "-m", selected_commit, *flags["rawArgv"], "--"] + files)
+            console.print(f"\n[bold green]✅ Committed {path}[/bold green]")
+            commits_made = True
+        else:
+            console.print(f"\n[bold yellow]⊘ Skipped {path}[/bold yellow]")
     
     return commits_made
 
