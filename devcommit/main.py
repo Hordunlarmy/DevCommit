@@ -167,18 +167,26 @@ def main(flags: CommitFlag = None):
                 use_per_directory = False
             # If "auto" or not set, fall through to interactive prompt
         
-        # If still not set, check if there are multiple directories and prompt
+        # If still not set (auto mode), check if there are multiple directories and prompt
+        # This works for both --files and regular staged files
         if not use_per_directory and config("COMMIT_MODE", default="auto").lower() == "auto":
             grouped = group_files_by_directory(staged["files"])
             if len(grouped) > 1:
                 use_per_directory = prompt_commit_strategy(console, grouped)
+            # If only one directory, use global commit (single commit for all files)
         
         # Track if any commits were made
         commit_made = False
         if use_per_directory:
-            commit_made = process_per_directory_commits(console, staged, flags)
+            # When --files is used with directory mode, treat each file as separate
+            if push_files_list and len(push_files_list) > 0:
+                commit_made = process_per_file_commits(console, staged, flags)
+            else:
+                commit_made = process_per_directory_commits(console, staged, flags)
         else:
-            commit_made = process_global_commit(console, flags)
+            # Pass staged dict so process_global_commit knows which files to commit
+            # (important when --files is used)
+            commit_made = process_global_commit(console, flags, staged=staged)
         
         # Handle push if requested and a commit was actually made
         if flags.get("push", False) and commit_made:
@@ -241,7 +249,13 @@ def detect_staged_files(console, exclude_files):
         return staged
 
 
-def analyze_changes(console):
+def analyze_changes(console, files=None):
+    """Analyze changes for commit message generation.
+    
+    Args:
+        console: Rich console for output
+        files: Optional list of specific files to analyze. If None, analyzes all staged files.
+    """
     import sys
     
     with console.status(
@@ -249,11 +263,16 @@ def analyze_changes(console):
         spinner="dots",
         spinner_style="magenta"
     ):
-        diff = subprocess.run(
-            ["git", "diff", "--staged"],
-            stdout=subprocess.PIPE,
-            text=True,
-        ).stdout
+        if files:
+            # Analyze only specific files
+            diff = get_diff_for_files(files)
+        else:
+            # Analyze all staged files
+            diff = subprocess.run(
+                ["git", "diff", "--staged"],
+                stdout=subprocess.PIPE,
+                text=True,
+            ).stdout
 
         if not diff:
             raise KnownError(
@@ -360,8 +379,21 @@ def prompt_custom_message(console):
     return custom_message
 
 
-def commit_changes(console, commit, raw_argv):
-    subprocess.run(["git", "commit", "-m", commit, *raw_argv])
+def commit_changes(console, commit, raw_argv, files=None):
+    """Commit changes.
+    
+    Args:
+        console: Rich console for output
+        commit: Commit message
+        raw_argv: Additional git commit arguments
+        files: Optional list of specific files to commit. If None, commits all staged files.
+    """
+    if files:
+        # Commit only specific files
+        subprocess.run(["git", "commit", "-m", commit, *raw_argv, "--"] + files)
+    else:
+        # Commit all staged files
+        subprocess.run(["git", "commit", "-m", commit, *raw_argv])
     console.print("\n[bold green]✅ Committed successfully![/bold green]")
 
 
@@ -437,13 +469,22 @@ def prompt_commit_strategy(console, grouped):
     return strategy
 
 
-def process_global_commit(console, flags):
+def process_global_commit(console, flags, staged=None):
     """Process a single global commit for all changes.
+    
+    Args:
+        console: Rich console for output
+        flags: Commit flags
+        staged: Optional staged dict with files. If provided, only commits those files.
+    
     Returns True if a commit was made, False otherwise."""
-    commit_message = analyze_changes(console)
+    # If staged dict is provided (e.g., from --files), use only those files
+    files_to_commit = staged["files"] if staged and staged.get("files") else None
+    
+    commit_message = analyze_changes(console, files=files_to_commit)
     selected_commit = prompt_commit_message(console, commit_message)
     if selected_commit:
-        commit_changes(console, selected_commit, flags["rawArgv"])
+        commit_changes(console, selected_commit, flags["rawArgv"], files=files_to_commit)
         return True
     return False
 
@@ -556,6 +597,114 @@ def process_per_directory_commits(console, staged, flags):
             commits_made = True
         else:
             console.print(f"\n[bold yellow]⊘ Skipped {directory}[/bold yellow]")
+    
+    return commits_made
+
+
+def process_per_file_commits(console, staged, flags):
+    """Process separate commits for each file when --files is used with directory mode.
+    Returns True if at least one commit was made, False otherwise."""
+    files = staged["files"]
+    commits_made = False
+    
+    console.print()
+    console.print("╭" + "─" * 60 + "╮", style="bold magenta")
+    console.print("│" + f"  🔮 [bold white]Processing {len(files)} file(s)[/bold white]".ljust(71) + "│", style="bold magenta")
+    console.print("╰" + "─" * 60 + "╯", style="bold magenta")
+    console.print()
+    
+    # Ask if user wants to commit all or select specific files
+    style = get_style({
+        "question": "#00d7ff bold",
+        "questionmark": "#00d7ff bold",
+        "pointer": "#00d7ff bold",
+        "instruction": "#7f7f7f",
+        "answer": "#00d7ff bold",
+        "checkbox": "#00d7ff bold"
+    }, style_override=False)
+    
+    if len(files) > 1:
+        commit_all = inquirer.confirm(
+            message="Commit all files?",
+            style=style,
+            default=True,
+            instruction="(y/n)",
+            qmark="❯"
+        ).execute()
+        
+        if commit_all:
+            selected_files = files
+        else:
+            # Let user select which files to commit
+            file_choices = [
+                {"name": file, "value": file}
+                for file in files
+            ]
+            
+            selected_files = inquirer.checkbox(
+                message="Select files to commit",
+                style=style,
+                choices=file_choices,
+                default=files,
+                instruction="(Space to select, Enter to confirm)",
+                qmark="❯"
+            ).execute()
+    else:
+        selected_files = files
+    
+    if not selected_files:
+        console.print("\n[bold yellow]⚠️  No files selected[/bold yellow]\n")
+        return False
+    
+    # Process each selected file
+    for idx, file in enumerate(selected_files, 1):
+        console.print()
+        console.print("┌" + "─" * 60 + "┐", style="bold cyan")
+        console.print("│" + f"  📄 [{idx}/{len(selected_files)}] [bold white]{file}[/bold white]".ljust(69) + "│", style="bold cyan")
+        console.print("└" + "─" * 60 + "┘", style="bold cyan")
+        console.print()
+        
+        # Get diff for this file
+        with console.status(
+            f"[magenta]🤖 Analyzing {file}...[/magenta]",
+            spinner="dots",
+            spinner_style="magenta"
+        ):
+            diff = get_diff_for_files([file], flags["excludeFiles"])
+            
+            if not diff:
+                console.print(f"\n[bold yellow]⚠️  No diff for {file}, skipping[/bold yellow]\n")
+                continue
+            
+            # Suppress stderr during AI call to hide ALTS warnings
+            import sys
+            _stderr = sys.stderr
+            _devnull = open(os.devnull, 'w')
+            sys.stderr = _devnull
+            
+            try:
+                commit_message = generateCommitMessage(diff)
+            finally:
+                sys.stderr = _stderr
+                _devnull.close()
+            
+            if isinstance(commit_message, str):
+                commit_message = commit_message.split("|")
+            
+            if not commit_message:
+                console.print(f"\n[bold yellow]⚠️  No commit message generated for {file}, skipping[/bold yellow]\n")
+                continue
+        
+        # Prompt for commit message selection
+        selected_commit = prompt_commit_message(console, commit_message)
+        
+        if selected_commit:
+            # Commit only this file
+            subprocess.run(["git", "commit", "-m", selected_commit, *flags["rawArgv"], "--", file])
+            console.print(f"\n[bold green]✅ Committed {file}[/bold green]")
+            commits_made = True
+        else:
+            console.print(f"\n[bold yellow]⊘ Skipped {file}[/bold yellow]")
     
     return commits_made
 
