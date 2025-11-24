@@ -8,6 +8,9 @@ A command-line AI tool for autocommits.
 - 🚀 Automatic commit generation using AI
 - 📁 Directory-based commits - create separate commits for each root directory
 - 🎯 Interactive mode to choose between global or directory-based commits
+- 📄 **Commit specific files or folders** - Stage and commit only selected files/directories
+- 🔄 **Regenerate commit messages** - Don't like the suggestions? Regenerate with one click
+- 🚀 **Push to remote** - Automatically push commits after committing
 - ⚙️ Flexible configuration - use environment variables or .dcommit file
 - 🏠 Self-hosted model support - use your own AI infrastructure
 - 🆓 Multiple free tier options available
@@ -160,6 +163,9 @@ devcommit --stageAll --files file1.py file2.py
 git add src/ tests/
 devcommit --files src/ tests/
 
+# Stage and commit multiple directories
+devcommit -s -f src/core src/modules/account/ src/modules/auth/
+
 # Short form
 devcommit -s -f file1.py file2.py
 ```
@@ -170,22 +176,66 @@ When using `--files` or `-f`:
 - With `--stageAll`: Stages the specified files/folders and then commits them
 - AI generates commit messages based on changes in those files
 - Works with both individual files and entire directories
+- Files with no changes are automatically filtered out
 
 #### Commit Mode Behavior with `--files`
 
 The `--files` flag respects your `COMMIT_MODE` setting:
 
 - **`COMMIT_MODE=directory`** with `--files`:
-  - Each file gets its own separate commit, even if files are in the same directory
-  - Example: `devcommit -f src/test1.py src/test2.py` creates 2 separate commits
+  - **Individual files**: Each file gets its own separate commit
+    - Example: `devcommit -f src/test1.py src/test2.py` creates 2 separate commits
+  - **Directories**: Each directory gets one commit containing all its files
+    - Example: `devcommit -f src/core src/modules/account/` creates 2 commits (one per directory)
 
 - **`COMMIT_MODE=global`** with `--files`:
-  - All specified files are committed together in a single commit
+  - All specified files/directories are committed together in a single commit
   - Example: `devcommit -f src/test1.py src/test2.py` creates 1 commit for both files
 
 - **`COMMIT_MODE=auto`** with `--files`:
-  - If files span multiple directories, prompts you to choose between one commit or separate commits
-  - If all files are in the same directory, creates one commit (unless directory mode is selected)
+  - Always prompts you to choose between one commit for all files or separate commits
+  - If you select directory mode: individual files get separate commits, directories get one commit each
+  - If you select global mode: everything is committed together
+
+### Push to Remote
+
+DevCommit can automatically push your commits to the remote repository after committing.
+
+**Usage:**
+
+```bash
+# Commit all staged changes and push
+devcommit --push
+
+# Commit specific files and push
+devcommit --files file1.py file2.py --push
+
+# Stage, commit, and push in one command
+devcommit --stageAll --push
+
+# Short form
+devcommit -p
+devcommit -f file1.py -p
+```
+
+**Note:** The push operation will only execute if commits were successfully made. If you cancel the commit, the push will be skipped.
+
+### Regenerate Commit Messages
+
+Don't like the AI-generated commit messages? You can regenerate them on the fly!
+
+When viewing commit message options, you'll see:
+- Numbered commit message suggestions
+- ✏️ Enter custom message
+- 🔄 **Regenerate commit messages** (new!)
+- ❌ Cancel
+
+Selecting "Regenerate commit messages" will:
+- Call the AI again to generate new suggestions
+- Show the new messages in the same prompt
+- Allow you to regenerate again or select a message
+
+This works for all commit modes (global, directory, and per-file commits).
 
 ### Additional Options
 
@@ -223,6 +273,12 @@ devcommit --push
 
 # Commit specific files and push
 devcommit --files file1.py file2.py --push
+
+# Stage and commit multiple directories with directory mode
+devcommit -s -f src/core src/modules/account/ --directory
+
+# Stage and commit, then push
+devcommit -s -f src/core src/modules/account/ -p
 ```
 
 ## AI Provider Support
