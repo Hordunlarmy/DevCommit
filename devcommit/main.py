@@ -336,7 +336,18 @@ def analyze_changes(console, files=None):
         return commit_message
 
 
-def prompt_commit_message(console, commit_message):
+def prompt_commit_message(console, commit_message, regenerate_callback=None):
+    """Prompt user to select a commit message.
+    
+    Args:
+        console: Rich console for output
+        commit_message: List of generated commit messages
+        regenerate_callback: Optional function to call when regenerate is selected.
+                            Should return a new list of commit messages.
+    
+    Returns:
+        Selected commit message string, "regenerate" to regenerate, or None if cancelled
+    """
     tag = (
         "Select commit message"
         if len(commit_message) > 1
@@ -366,8 +377,13 @@ def prompt_commit_message(console, commit_message):
     choices = [
         *numbered_choices,
         {"name": "  ✏️  Enter custom message", "value": "custom"},
-        {"name": "  ❌ Cancel", "value": "cancel"}
     ]
+    
+    # Add regenerate option if callback is provided
+    if regenerate_callback:
+        choices.append({"name": "  🔄 Regenerate commit messages", "value": "regenerate"})
+    
+    choices.append({"name": "  ❌ Cancel", "value": "cancel"})
     
     action = inquirer.fuzzy(
         message=tag,
@@ -384,6 +400,8 @@ def prompt_commit_message(console, commit_message):
         return None
     elif action == "custom":
         return prompt_custom_message(console)
+    elif action == "regenerate":
+        return "regenerate"
     return action
 
 
@@ -534,12 +552,24 @@ def process_global_commit(console, flags, staged=None):
     # If staged dict is provided (e.g., from --files), use only those files
     files_to_commit = staged["files"] if staged and staged.get("files") else None
     
-    commit_message = analyze_changes(console, files=files_to_commit)
-    selected_commit = prompt_commit_message(console, commit_message)
-    if selected_commit:
-        commit_changes(console, selected_commit, flags["rawArgv"], files=files_to_commit)
-        return True
-    return False
+    # Regenerate loop
+    while True:
+        commit_message = analyze_changes(console, files=files_to_commit)
+        
+        # Create regenerate callback
+        def regenerate():
+            return analyze_changes(console, files=files_to_commit)
+        
+        selected_commit = prompt_commit_message(console, commit_message, regenerate_callback=regenerate)
+        
+        if selected_commit == "regenerate":
+            # User wants to regenerate, loop again
+            continue
+        elif selected_commit:
+            commit_changes(console, selected_commit, flags["rawArgv"], files=files_to_commit)
+            return True
+        else:
+            return False
 
 
 def process_per_directory_commits(console, staged, flags):
@@ -640,16 +670,48 @@ def process_per_directory_commits(console, staged, flags):
                 console.print(f"\n[bold yellow]⚠️  No commit message generated for {directory}, skipping[/bold yellow]\n")
                 continue
         
-        # Prompt for commit message selection
-        selected_commit = prompt_commit_message(console, commit_message)
-        
-        if selected_commit:
-            # Commit only the files in this directory
-            subprocess.run(["git", "commit", "-m", selected_commit, *flags["rawArgv"], "--"] + files)
-            console.print(f"\n[bold green]✅ Committed {directory}[/bold green]")
-            commits_made = True
-        else:
-            console.print(f"\n[bold yellow]⊘ Skipped {directory}[/bold yellow]")
+        # Prompt for commit message selection with regenerate option
+        while True:
+            def regenerate():
+                diff = get_diff_for_files(files, flags["excludeFiles"])
+                if not diff:
+                    return []
+                import sys
+                _stderr = sys.stderr
+                _devnull = open(os.devnull, 'w')
+                sys.stderr = _devnull
+                try:
+                    msg = generateCommitMessage(diff)
+                    if isinstance(msg, str):
+                        msg = msg.split("|")
+                    return msg
+                finally:
+                    sys.stderr = _stderr
+                    _devnull.close()
+            
+            selected_commit = prompt_commit_message(console, commit_message, regenerate_callback=regenerate)
+            
+            if selected_commit == "regenerate":
+                # Regenerate commit messages
+                with console.status(
+                    f"[magenta]🤖 Regenerating commit messages for {directory}...[/magenta]",
+                    spinner="dots",
+                    spinner_style="magenta"
+                ):
+                    commit_message = regenerate()
+                    if not commit_message:
+                        console.print(f"\n[bold yellow]⚠️  No commit message generated for {directory}, skipping[/bold yellow]\n")
+                        break
+                continue
+            elif selected_commit:
+                # Commit only the files in this directory
+                subprocess.run(["git", "commit", "-m", selected_commit, *flags["rawArgv"], "--"] + files)
+                console.print(f"\n[bold green]✅ Committed {directory}[/bold green]")
+                commits_made = True
+                break
+            else:
+                console.print(f"\n[bold yellow]⊘ Skipped {directory}[/bold yellow]")
+                break
     
     return commits_made
 
@@ -764,16 +826,48 @@ def process_per_file_commits(console, staged, flags):
                 console.print(f"\n[bold yellow]⚠️  No commit message generated for {file}, skipping[/bold yellow]\n")
                 continue
         
-        # Prompt for commit message selection
-        selected_commit = prompt_commit_message(console, commit_message)
-        
-        if selected_commit:
-            # Commit only this file
-            subprocess.run(["git", "commit", "-m", selected_commit, *flags["rawArgv"], "--", file])
-            console.print(f"\n[bold green]✅ Committed {file}[/bold green]")
-            commits_made = True
-        else:
-            console.print(f"\n[bold yellow]⊘ Skipped {file}[/bold yellow]")
+        # Prompt for commit message selection with regenerate option
+        while True:
+            def regenerate():
+                diff = get_diff_for_files([file], flags["excludeFiles"])
+                if not diff:
+                    return []
+                import sys
+                _stderr = sys.stderr
+                _devnull = open(os.devnull, 'w')
+                sys.stderr = _devnull
+                try:
+                    msg = generateCommitMessage(diff)
+                    if isinstance(msg, str):
+                        msg = msg.split("|")
+                    return msg
+                finally:
+                    sys.stderr = _stderr
+                    _devnull.close()
+            
+            selected_commit = prompt_commit_message(console, commit_message, regenerate_callback=regenerate)
+            
+            if selected_commit == "regenerate":
+                # Regenerate commit messages
+                with console.status(
+                    f"[magenta]🤖 Regenerating commit messages for {file}...[/magenta]",
+                    spinner="dots",
+                    spinner_style="magenta"
+                ):
+                    commit_message = regenerate()
+                    if not commit_message:
+                        console.print(f"\n[bold yellow]⚠️  No commit message generated for {file}, skipping[/bold yellow]\n")
+                        break
+                continue
+            elif selected_commit:
+                # Commit only this file
+                subprocess.run(["git", "commit", "-m", selected_commit, *flags["rawArgv"], "--", file])
+                console.print(f"\n[bold green]✅ Committed {file}[/bold green]")
+                commits_made = True
+                break
+            else:
+                console.print(f"\n[bold yellow]⊘ Skipped {file}[/bold yellow]")
+                break
     
     return commits_made
 
@@ -864,16 +958,48 @@ def process_per_directory_commits_from_paths(console, staged, flags, original_pa
                 console.print(f"\n[bold yellow]⚠️  No commit message generated for {path}, skipping[/bold yellow]\n")
                 continue
         
-        # Prompt for commit message selection
-        selected_commit = prompt_commit_message(console, commit_message)
-        
-        if selected_commit:
-            # Commit only the files for this path
-            subprocess.run(["git", "commit", "-m", selected_commit, *flags["rawArgv"], "--"] + files)
-            console.print(f"\n[bold green]✅ Committed {path}[/bold green]")
-            commits_made = True
-        else:
-            console.print(f"\n[bold yellow]⊘ Skipped {path}[/bold yellow]")
+        # Prompt for commit message selection with regenerate option
+        while True:
+            def regenerate():
+                diff = get_diff_for_files(files, flags["excludeFiles"])
+                if not diff:
+                    return []
+                import sys
+                _stderr = sys.stderr
+                _devnull = open(os.devnull, 'w')
+                sys.stderr = _devnull
+                try:
+                    msg = generateCommitMessage(diff)
+                    if isinstance(msg, str):
+                        msg = msg.split("|")
+                    return msg
+                finally:
+                    sys.stderr = _stderr
+                    _devnull.close()
+            
+            selected_commit = prompt_commit_message(console, commit_message, regenerate_callback=regenerate)
+            
+            if selected_commit == "regenerate":
+                # Regenerate commit messages
+                with console.status(
+                    f"[magenta]🤖 Regenerating commit messages for {path}...[/magenta]",
+                    spinner="dots",
+                    spinner_style="magenta"
+                ):
+                    commit_message = regenerate()
+                    if not commit_message:
+                        console.print(f"\n[bold yellow]⚠️  No commit message generated for {path}, skipping[/bold yellow]\n")
+                        break
+                continue
+            elif selected_commit:
+                # Commit only the files for this path
+                subprocess.run(["git", "commit", "-m", selected_commit, *flags["rawArgv"], "--"] + files)
+                console.print(f"\n[bold green]✅ Committed {path}[/bold green]")
+                commits_made = True
+                break
+            else:
+                console.print(f"\n[bold yellow]⊘ Skipped {path}[/bold yellow]")
+                break
     
     return commits_made
 
