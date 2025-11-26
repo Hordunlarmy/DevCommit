@@ -56,13 +56,8 @@ def get_default_excludes() -> List[str]:
     except:
         pass
     
-    # Default exclusions
-    return [
-        'package-lock.json',
-        'pnpm-lock.yaml',
-        'yarn.lock',
-        '*.lock'
-    ]
+    # No default exclusions; rely entirely on user configuration.
+    return []
 
 
 # Get default files to exclude (can be overridden via config)

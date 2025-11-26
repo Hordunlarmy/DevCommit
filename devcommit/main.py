@@ -261,7 +261,7 @@ def stage_changes(console):
         spinner="dots",
         spinner_style="cyan"
     ):
-        subprocess.run(["git", "add", "--update"], check=True)
+        subprocess.run(["git", "add", "--all"], check=True)
 
 
 def detect_staged_files(console, exclude_files):
