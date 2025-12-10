@@ -56,6 +56,9 @@ A command-line AI tool for autocommits.
    # Or using Groq (recommended for free tier)
    export AI_PROVIDER='groq'
    export GROQ_API_KEY='your-groq-key'
+   # Optional: set model (provider-specific key or MODEL_NAME as a fallback)
+   export GROQ_MODEL='llama-3.3-70b-versatile'   # or
+   export MODEL_NAME='llama-3.3-70b-versatile'
 
    # Add to ~/.bashrc or ~/.zshrc for persistence
    echo "export GEMINI_API_KEY='your-key'" >> ~/.bashrc
@@ -69,6 +72,8 @@ A command-line AI tool for autocommits.
    LOCALE = en
    MAX_NO = 1
    COMMIT_TYPE = conventional
+   # Model selection (provider-specific key takes priority, MODEL_NAME is the fallback)
+   # GEMINI_MODEL / OPENAI_MODEL / GROQ_MODEL / ANTHROPIC_MODEL / OLLAMA_MODEL / CUSTOM_MODEL
    MODEL_NAME = gemini-2.5-flash
    COMMIT_MODE = auto
    EOF
