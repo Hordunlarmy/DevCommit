@@ -58,13 +58,13 @@ def main(flags: CommitFlag = None):
         elif provider == "gemini":
             model = config("GEMINI_MODEL", default=None) or config("MODEL_NAME", default="gemini-2.0-flash-exp")
         elif provider == "openai":
-            model = config("OPENAI_MODEL", default="gpt-4o-mini")
+            model = config("OPENAI_MODEL", default=None) or config("MODEL_NAME", default="gpt-4o-mini")
         elif provider == "groq":
-            model = config("GROQ_MODEL", default="llama-3.3-70b-versatile")
+            model = config("GROQ_MODEL", default=None) or config("MODEL_NAME", default="llama-3.3-70b-versatile")
         elif provider == "anthropic":
-            model = config("ANTHROPIC_MODEL", default="claude-3-haiku-20240307")
+            model = config("ANTHROPIC_MODEL", default=None) or config("MODEL_NAME", default="claude-3-haiku-20240307")
         elif provider == "custom":
-            model = config("CUSTOM_MODEL", default="default")
+            model = config("CUSTOM_MODEL", default=None) or config("MODEL_NAME", default="default")
         
         console.print(f"[dim]Provider:[/dim] [bold magenta]{provider}[/bold magenta] [dim]│[/dim] [dim]Model:[/dim] [bold magenta]{model}[/bold magenta]")
         console.print()

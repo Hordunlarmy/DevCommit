@@ -242,26 +242,38 @@ def get_ai_provider(config) -> AIProvider:
         api_key = config("OPENAI_API_KEY", default=None)
         if not api_key:
             raise ValueError("OPENAI_API_KEY not set")
-        model = config("OPENAI_MODEL", default="gpt-4o-mini")
+        model = (
+            config("OPENAI_MODEL", default=None)
+            or config("MODEL_NAME", default="gpt-4o-mini")
+        )
         return OpenAIProvider(api_key, model)
     
     elif provider_name == "groq":
         api_key = config("GROQ_API_KEY", default=None)
         if not api_key:
             raise ValueError("GROQ_API_KEY not set")
-        model = config("GROQ_MODEL", default="llama-3.3-70b-versatile")
+        model = (
+            config("GROQ_MODEL", default=None)
+            or config("MODEL_NAME", default="llama-3.3-70b-versatile")
+        )
         return GroqProvider(api_key, model)
     
     elif provider_name == "anthropic":
         api_key = config("ANTHROPIC_API_KEY", default=None)
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY not set")
-        model = config("ANTHROPIC_MODEL", default="claude-3-haiku-20240307")
+        model = (
+            config("ANTHROPIC_MODEL", default=None)
+            or config("MODEL_NAME", default="claude-3-haiku-20240307")
+        )
         return AnthropicProvider(api_key, model)
     
     elif provider_name == "ollama":
         base_url = config("OLLAMA_BASE_URL", default="http://localhost:11434")
-        model = config("OLLAMA_MODEL", default="llama3")
+        model = (
+            config("OLLAMA_MODEL", default=None)
+            or config("MODEL_NAME", default="llama3")
+        )
         return OllamaProvider(base_url, model)
     
     elif provider_name == "custom":
@@ -269,7 +281,10 @@ def get_ai_provider(config) -> AIProvider:
         if not api_url:
             raise ValueError("CUSTOM_API_URL not set for custom provider")
         api_key = config("CUSTOM_API_KEY", default=None)
-        model = config("CUSTOM_MODEL", default="default")
+        model = (
+            config("CUSTOM_MODEL", default=None)
+            or config("MODEL_NAME", default="default")
+        )
         return CustomProvider(api_url, api_key, model)
     
     else:
